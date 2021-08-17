@@ -1,0 +1,131 @@
+[settings]
+    arch=x86_64
+    build_type=Release
+    compiler=apple-clang
+    compiler.libcxx=libc++
+    compiler.version=11.0
+    os=Macos
+
+[requires]
+    boost/1.Y.Z
+    clara/1.Y.Z
+    eigen/3.Y.Z
+    ipp-static/2019.Y.Z
+    jansson/2.Y.Z
+    jsonformoderncpp/3.Y.Z
+    libcurl/7.Y.Z
+    mkl-static/2019.Y.Z
+    nanoflann/1.Y.Z
+    smelt/1.Y.Z
+    zlib/1.Y.Z
+
+[options]
+    shared=False
+
+[full_settings]
+    arch=x86_64
+    build_type=Release
+    compiler=apple-clang
+    compiler.libcxx=libc++
+    compiler.version=11.0
+    os=Macos
+
+[full_requires]
+    Catch2/2.9.2@catchorg/stable:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    boost/1.74.0:524ea35a8120baabdde02483add58d81bf541327
+    clara/1.1.5@bincrafters/stable:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    eigen/3.3.7@conan/stable:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    ipp-include/2019.4@simcenter/stable:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    ipp-static/2019.4@simcenter/stable:9bb099e9da19f1d0a90f439b627cffbd1b7806a9
+    jansson/2.13.1:13a5e178bb3795757255fab77cd73bf7e6701f63
+    jsonformoderncpp/3.7.0@vthiery/stable:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    libcurl/7.72.0:63a5c66a2d1470c7192d9ad35b6363b4014b0472
+    mkl-include/2019.4@simcenter/stable:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    mkl-static/2019.4@simcenter/stable:b68d235b1e582b47485bf5f8e0bc979a0df2eac1
+    nanoflann/1.3.0@simcenter/stable:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    smelt/1.2.0@simcenter/stable:5875de89245e5fc848253cb8874c927678616b45
+    zlib/1.2.11:f74366f76f700cc6e991285892ad7a23c30e6d47
+
+[full_options]
+    shared=False
+    boost:asio_no_deprecated=False
+    boost:bzip2=True
+    boost:debug_level=0
+    boost:error_code_header_only=False
+    boost:extra_b2_flags=None
+    boost:fPIC=True
+    boost:filesystem_no_deprecated=False
+    boost:header_only=True
+    boost:i18n_backend=iconv
+    boost:layout=system
+    boost:lzma=False
+    boost:magic_autolink=False
+    boost:multithreading=True
+    boost:namespace=boost
+    boost:namespace_alias=False
+    boost:pch=True
+    boost:python_executable=None
+    boost:python_version=None
+    boost:segmented_stacks=False
+    boost:shared=False
+    boost:system_no_deprecated=False
+    boost:without_atomic=False
+    boost:without_chrono=False
+    boost:without_container=False
+    boost:without_context=False
+    boost:without_contract=False
+    boost:without_coroutine=False
+    boost:without_date_time=False
+    boost:without_exception=False
+    boost:without_fiber=False
+    boost:without_filesystem=False
+    boost:without_graph=False
+    boost:without_graph_parallel=False
+    boost:without_iostreams=False
+    boost:without_locale=False
+    boost:without_log=False
+    boost:without_math=False
+    boost:without_mpi=False
+    boost:without_program_options=False
+    boost:without_python=True
+    boost:without_random=False
+    boost:without_regex=False
+    boost:without_serialization=False
+    boost:without_stacktrace=False
+    boost:without_system=False
+    boost:without_test=False
+    boost:without_thread=False
+    boost:without_timer=False
+    boost:without_type_erasure=False
+    boost:without_wave=False
+    boost:zlib=True
+    boost:zstd=False
+    ipp-static:simcenter_backend=True
+    jansson:fPIC=True
+    jansson:shared=False
+    jansson:use_urandom=True
+    jansson:use_windows_cryptoapi=True
+    libcurl:fPIC=True
+    libcurl:shared=False
+    libcurl:with_brotli=False
+    libcurl:with_largemaxwritesize=False
+    libcurl:with_ldap=False
+    libcurl:with_libidn=False
+    libcurl:with_libmetalink=False
+    libcurl:with_libpsl=False
+    libcurl:with_librtmp=False
+    libcurl:with_libssh2=False
+    libcurl:with_nghttp2=False
+    libcurl:with_ssl=darwinssl
+    libcurl:with_zlib=True
+    mkl-static:threaded=False
+    smelt:shared=False
+    zlib:fPIC=True
+    zlib:minizip=False
+    zlib:shared=False
+
+[recipe_hash]
+
+
+[env]
+
