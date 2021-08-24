@@ -53,6 +53,7 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include "ERANataf.h"
 #include "runGSA.h"
 #include "runForward.h"
+#include <regex>
 
 #include "writeErrors.h"
 writeErrors theErrorFile; // Error log
@@ -66,7 +67,10 @@ int main(int argc, char** argv)
 	comm = MPI_COMM_WORLD;
 	MPI_Comm_rank(comm, &procno);
 	MPI_Comm_size(comm, &nprocs);
-	
+
+    std::regex re(R"(\{([^}]+)\})");
+    std::cerr << "testing\n";
+
 	if ((argc != 4) && (procno == 0)) {
 		std::string errMsg = "Number of the additional commend line arguments is " + std::to_string(argc - 1) + ", but 3 is required. The arguments should always include the working directory / os type / run type";
 		std::cerr << errMsg << std::endl;
@@ -77,9 +81,9 @@ int main(int argc, char** argv)
 	std::string osType = argv[2];
 	std::string runType = argv[3];
 
-	if (procno == 0) std::cerr << "WORKDIR: " << workDir << "\n";
-	if (procno == 0) std::cerr << "OS: " << osType << "\n";
-	if (procno == 0) std::cerr << "RUN: " << runType << "\n\n";
+	if (procno == 0) std::cerr << "* WORKDIR: " << workDir << "\n";
+	if (procno == 0) std::cerr << "* OS: " << osType << "\n";
+	if (procno == 0) std::cerr << "* RUN: " << runType << "\n\n";
 
 	//std::string workDir = "C:/Users/yisan/Documents/quoFEM/LocalWorkDir/tmp.SimCenter";
 	//std::string osType = "Windows";
@@ -87,7 +91,7 @@ int main(int argc, char** argv)
 
 	std::string  errorDir = workDir + "/dakota.err";
 	theErrorFile.getFileName(errorDir, procno);
-	
+
 	//auto elapseStart = std::chrono::high_resolution_clock::now();
 	auto elapseStart = std::chrono::high_resolution_clock::now();
 	double elapsedTime;
@@ -95,7 +99,7 @@ int main(int argc, char** argv)
 	//
 	//  (1) read JSON file
 	//
-	
+
 	jsonInput inp(workDir, procno);
 
 	//
@@ -112,20 +116,20 @@ int main(int argc, char** argv)
 
 	//
 	//	(4-1) FE Analysis - (batch samples)
-	//	
-	
+	//
+
 	T.simulateAppBatch(osType, runType, inp, procno, nprocs);
 
 	//
 	//	(5) Run UQ analysis
-	//	
+	//
 
 	if (!inp.uqType.compare("Sensitivity Analysis")) {
 
 		//
 		//	(5-1) Global sensitivity analysis
 		//
-		
+
 		runForward ForwardResults(T.X, T.G, procno);
 		ForwardResults.writeTabOutputs(inp, procno); 	//	Write dakotaTab.out
 
