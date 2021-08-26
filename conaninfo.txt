@@ -18,6 +18,7 @@
     nanoflann/1.Y.Z
     smelt/1.Y.Z
     zlib/1.Y.Z
+    ms-gsl/3.Y.Z
 
 [options]
     shared=False

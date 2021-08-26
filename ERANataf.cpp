@@ -818,7 +818,8 @@ void ERANataf::simulateAppSequential(string osType, string runType, jsonInput in
 	std::ifstream readFile(results.data());
 
 	if (!readFile.is_open()) {
-		//*ERROR*
+		//
+		*ERROR*
 
 		std::string errMsg = "Error reading FEM results: check your inputs ";
 		theErrorFile.write(errMsg);

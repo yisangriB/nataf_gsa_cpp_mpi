@@ -3,8 +3,10 @@ cmake_minimum_required(VERSION 3.10)
 project(nataf_gsa_mpi_project)
 
 if (APPLE)
-	SET(CMAKE_C_COMPILER /usr/local/bin/gcc-11)
-  	SET(CMAKE_CXX_COMPILER /usr/local/bin/g++-11)
+#	SET(CMAKE_C_COMPILER /usr/local/bin/gcc-11)
+#  	SET(CMAKE_CXX_COMPILER /usr/local/bin/g++-11)
+#	SET(CMAKE_C_COMPILER /usr/bin/clang)
+#	SET(CMAKE_CXX_COMPILER /usr/bin/clang++)
 	#add_compile_options("-stdlib=libc++" "-lc++abi" "-v")
 endif()
 # sy- add mpi
@@ -12,7 +14,7 @@ endif()
 find_package(MPI)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
@@ -37,8 +39,11 @@ set(SOURCES main.cpp
 	    discreteDist.cpp
 	    writeErrors.cpp)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib_armadillo/armadillo-10.1.0/include)
-include_directories(${MPI_INCLUDE_PATH})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib_armadillo/armadillo-10.1.0/include ${MPI_INCLUDE_PATH})
+#include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib_armadillo/armadillo-10.1.0/include)
+
+
+
 
 add_executable(nataf_gsa_mpi ${SOURCES})
 target_link_libraries(nataf_gsa_mpi
@@ -47,19 +52,26 @@ target_link_libraries(nataf_gsa_mpi
 	CONAN_PKG::nlopt
 	CONAN_PKG::eigen
 	CONAN_PKG::mkl-static
+	CONAN_PKG::ms-gsl
 	${MPI_LIBRARIES}
 	)
 
-if(MPI_COMPILE_FLAGS)
-  set_target_properties(nataf_gsa_mpi PROPERTIES
-    COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
-endif()
-
-if(MPI_LINK_FLAGS)
-  set_target_properties(nataf_gsa_mpi PROPERTIES
-    LINK_FLAGS "${MPI_LINK_FLAGS}")
-endif()
-
+#if(MPI_CXX_COMPILE_FLAGS)
+#	set_target_properties(nataf_gsa_mpi PROPERTIES COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}")
+#endif()
+#if(MPI_CXX_LINK_FLAGS)
+#	set_target_properties(nataf_gsa_mpi PROPERTIES LINK_FLAGS "${MPI_CXX_LINK_FLAGS}")
+#endif()
+#if(MPI_COMPILE_DEFINITIONS)
+#	set_target_properties(nataf_gsa_mpi PROPERTIES
+#			COMPILE_FLAGS "${MPI_COMPILE_DEFINITIONS}")
+#endif()
+#
+#if(MPI_LINK_FLAGS)
+#	set_target_properties(nataf_gsa_mpi PROPERTIES
+#			COMPILE_FLAGS "${MPI_COMPILE_FLAGS}"
+#			LINK_FLAGS "${MPI_LINK_FLAGS}")
+#endif()
 
 #target_link_libraries(nataf_gsa_mpi
 #	CONAN_PKG::boost
