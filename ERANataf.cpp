@@ -616,9 +616,9 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 		std::filesystem::copy_options::update_existing
 		| std::filesystem::copy_options::recursive;
 
-	/*
-	const auto copyOptions = std::filesystem::copy_options::overwrite_existing;
-	*/
+	
+	//const auto copyOptions = std::filesystem::copy_options::overwrite_existing;
+	
 
 	try
 	{
@@ -700,6 +700,7 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 	}
 
 	return g_tmp;
+	//return {0.,0,};
 }
 
 
