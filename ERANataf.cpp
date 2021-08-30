@@ -556,13 +556,15 @@ void ERANataf::simulateAppBatch(string osType,
 	// 
 	// MPI
 	//
-
+	//std::cout <<"Testing here 1 \n";
 	int chunkSize = std::ceil(double(inp.nmc) / double(nproc));
 	//int lastChunk = inp.nmc - chunkSize * (nproc-1);
 	double* rbuf;
 	rbuf = (double*)malloc(inp.nqoi * chunkSize * nproc * sizeof(double));
 	double* tmpres = (double*)malloc(inp.nqoi * chunkSize * sizeof(double));
-
+	//std::cout <<"Testing here 2 \n";
+	
+	MPI_Barrier( MPI_COMM_WORLD); // To make sure tempdir is clean.
 	for (int i = 0; i < chunkSize; i ++)
 	{
 		int id = chunkSize * procno + i;

@@ -118,7 +118,13 @@ int main(int argc, char** argv)
 	//	(4-1) FE Analysis - (batch samples)
 	//
 
+	//std::cout<<"Just testing this location 0\n";
+
+
 	T.simulateAppBatch(osType, runType, inp, procno, nprocs);
+
+	//std::cout<<"Just testing this location 1\n";
+
 
 	//
 	//	(5) Run UQ analysis

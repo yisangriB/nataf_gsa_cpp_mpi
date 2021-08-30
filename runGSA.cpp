@@ -64,6 +64,8 @@ runGSA::runGSA(vector<vector<double>> xval,
 	int nqoi = gmat[0].size();
 	int Kos_base = std::min(Kos, int(nmc / 5));
 	Kos = Kos_base;
+	//std::cout<<"Just testing this location 2\n";
+
 	//
 	// MPI
 	//
@@ -74,6 +76,7 @@ runGSA::runGSA(vector<vector<double>> xval,
 	double* StAll = (double*)malloc(ncombs * chunkSize * nprocs * sizeof(double));
 	double* StTmp = (double*)malloc(ncombs * chunkSize * sizeof(double));
 	// for each QoI
+	//std::cout<<"Just testing this location 3 \n";
 	for (int nq = 0; nq < chunkSize ; nq++) {
 		int id = chunkSize * procno + nq;
 		if (id >= nqoi) { // dummy

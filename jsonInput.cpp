@@ -456,11 +456,9 @@ void
 jsonInput::fromTextToId(string groupTxt, vector<string>& groupPool, vector<vector<int>>& groupIdVect)
 {
 	int nrv = groupPool.size();
-	std::cerr << "we are here : " << groupTxt <<"\n";
     std::regex re(R"(\{([^}]+)\})"); // will get string inside {}
     //std::regex re(""); // will get string inside {}
     //auto re = std::regex("Hello");
-    std::cerr <<"end hello world\n";
     std::sregex_token_iterator it(groupTxt.begin(), groupTxt.end(), re, 1);
 	std::sregex_token_iterator end;
 	while (it != end) {
@@ -498,7 +496,6 @@ jsonInput::fromTextToStr(string groupTxt, vector<vector<string>>& groupStringVec
 {
     int a=3;
 
-    std::cerr << "hello: " << groupTxt <<"\n";
     std::regex re(R"(\{([^}]+)\})"); // will get string inside {}
     //std::regex re("\\w+");
     //std::regex re;
