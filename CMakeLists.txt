@@ -28,7 +28,7 @@ set(SOURCES main.cpp
 	    jsonInput.cpp
 	    uniformDist.cpp
 	    chiSquaredDist.cpp
-	    lognormalDIst.cpp
+	    lognormalDist.cpp
 	    weibullDist.cpp
 	    discreteDist.cpp
 	    writeErrors.cpp)
