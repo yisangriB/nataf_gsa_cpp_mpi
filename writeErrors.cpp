@@ -51,10 +51,10 @@ writeErrors::~writeErrors() {}
 void writeErrors::getFileName(std::string errFileName, int procno) {
 	myProcno = procno;
 	if (myProcno == 0) {
-		theErrorFile.open(errFileName, 'w');
+	    theErrorFile.open(errFileName, std::ofstream::out );
 		std::string errMsg;
 		if (!theErrorFile.is_open()) {
-			errMsg = "Error running UQ engine: Failed to creat " + errFileName;
+			errMsg = "error running UQ engine: Failed to creat " + errFileName;
 			this->print(errMsg);
 			this->abort();
 		}

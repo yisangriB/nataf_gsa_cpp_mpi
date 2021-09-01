@@ -54,6 +54,7 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <string>
 #include <regex>
 #include "writeErrors.h"
+
 extern writeErrors theErrorFile; // Error log
 
 using json = nlohmann::json;

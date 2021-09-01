@@ -43,7 +43,7 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
  */
 
 #include "jsonInput.h"
-
+#include <regex>
 jsonInput::jsonInput(string workDir, int procno)
 {
 	this->workDir = workDir;
@@ -69,7 +69,8 @@ jsonInput::jsonInput(string workDir, int procno)
 	} else
 	{
 		//*ERROR*
-		std::string errMsg = "Error reading json: 'Forward Analysis' or 'Sensitivity Analysis' backend is called, but the user requested " + UQjson["UQ_Method"]["uqType"];
+		std::string methodType = UQjson["UQ_Method"]["uqType"];
+		std::string errMsg = "Error reading json: 'Forward Analysis' or 'Sensitivity Analysis' backend is called, but the user requested " + methodType;
 		theErrorFile.write(errMsg);
 	}
 
@@ -424,7 +425,7 @@ jsonInput::jsonInput(string workDir, int procno)
 			groups.push_back({i});
 		}
 		for (int i = 0; i < nreg; i++) {
-			for (int j = 0; j < size(resamplingGroups[i]); j++) {
+			for (int j = 0; j < resamplingGroups[i].size(); j++) {
 				groups.push_back({ resamplingGroups[i][j] });
 			}
 		}
@@ -435,10 +436,10 @@ jsonInput::jsonInput(string workDir, int procno)
 
 
 	for (int i = 0; i < nreg; i++) {
-		int length_old = size(vals[resamplingGroups[i][0]]);
+		int length_old = vals[resamplingGroups[i][0]].size();
 		int length_data;
-		for (int j = 1; j < size(resamplingGroups[i]); j++) {
-			length_data = size(vals[resamplingGroups[i][j]]);
+		for (int j = 1; j < resamplingGroups[i].size(); j++) {
+			length_data =vals[resamplingGroups[i][j]].size();
 			if (length_data != length_old)
 			{
 				std::string errMsg = "Error reading json: RVs in the same group do not have the same number of samples";
@@ -454,9 +455,11 @@ jsonInput::jsonInput(string workDir, int procno)
 void
 jsonInput::fromTextToId(string groupTxt, vector<string>& groupPool, vector<vector<int>>& groupIdVect)
 {
-	int nrv = size(groupPool);
-	std::regex re(R"(\{([^}]+)\})"); // will get string inside {}
-	std::sregex_token_iterator it(groupTxt.begin(), groupTxt.end(), re, 1);
+	int nrv = groupPool.size();
+    std::regex re(R"(\{([^}]+)\})"); // will get string inside {}
+    //std::regex re(""); // will get string inside {}
+    //auto re = std::regex("Hello");
+    std::sregex_token_iterator it(groupTxt.begin(), groupTxt.end(), re, 1);
 	std::sregex_token_iterator end;
 	while (it != end) {
 		std::stringstream ss(*it++);
@@ -491,7 +494,12 @@ jsonInput::fromTextToId(string groupTxt, vector<string>& groupPool, vector<vecto
 void
 jsonInput::fromTextToStr(string groupTxt, vector<vector<string>>& groupStringVector, vector<string>& flattenStringVect)
 {
-	std::regex re(R"(\{([^}]+)\})"); // will get string inside {}
+    int a=3;
+
+    std::regex re(R"(\{([^}]+)\})"); // will get string inside {}
+    //std::regex re("\\w+");
+    //std::regex re;
+	//re.assign("(soft)(.*)");
 	std::sregex_token_iterator it(groupTxt.begin(), groupTxt.end(), re, 1);
 	std::sregex_token_iterator end;
 	while (it != end) {

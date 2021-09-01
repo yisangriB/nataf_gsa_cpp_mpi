@@ -47,12 +47,14 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <iostream>
 #include <fstream>
 #include "nlopt.hpp"
+//#include <gsl/gsl>
 
 #include <iomanip>
 
 using std::vector;
 
 double nnlGumb(unsigned n, const double* x, double* grad, void* my_func_data);
+//double nnlGumb2(const gsl_vector *v, void *params, void* my_func_data);
 
 gumbelDist::gumbelDist(string opt, vector<double> val, vector<double> add) 
 {
@@ -121,9 +123,55 @@ gumbelDist::gumbelDist(string opt, vector<double> val, vector<double> add)
 		alp = 1 / an;
 
 
+		size_t iter = 0;
+		int status;
+
+//		const gsl_multimin_fminimizer_type *T;
+//		gsl_multimin_fminimizer *s;
+//
+//		/* Position of the minimum (1,2), scale factors
+//           10,20, height 30. */
+//
+//		gsl_vector *x;
+//		gsl_multimin_function_f my_func;
+//
+//		my_func.n = 2;
+//		my_func.f = nnlGumb;
+//		my_func.params = par;
+//
+//		/* Starting point, x = (5,7) */
+//		x = gsl_vector_alloc (2);
+//		gsl_vector_set (x, 0, alp);
+//		gsl_vector_set (x, 1, bet);
+//
+//		T = gsl_multimin_fminimizer_conjugate_fr;
+//		s = gsl_multimin_fminimizer_alloc (T, 2);
+//
+//		gsl_multimin_fminimizer_set (s, &my_func, x, 0.01, 1e-4);
+//
+//		do
+//		{
+//		    iter++;
+//		    status = gsl_multimin_fminimizer_iterate (s);
+//
+//		    if (status)
+//		        break;
+//
+//		    printf ("%5d %.5f %.5f %10.5f\n", iter,
+//                    gsl_vector_get (s->x, 0),
+//                    gsl_vector_get (s->x, 1),
+//                    s->f);
+//		}
+//		while (status == GSL_CONTINUE && iter < 100);
+//
+//		gsl_multimin_fminimizer_free (s);
+//		gsl_vector_free (x);
+
+
+		/////////////
+
 		vector<double> xs = val;
 		double params[2] = { alp,bet };
-
 
 		// MLE optimization
 		double lb[2] = { 1.e-10 , -INFINITY };
@@ -254,4 +302,27 @@ double nnlGumb(unsigned n, const double* x, double* grad, void* my_func_data)
 
 }
 
-
+//
+//double nnlGumb2(const gsl_vector *v, void* my_func_data)
+//{
+//
+//    double *p = (double *)params;
+//
+//    double sca = 1/gsl_vector_get(v, 0);
+//    double loc = gsl_vector_get(v, 1);
+//
+//    boost::math::extreme_value_distribution<> gumbDist1(loc, sca);
+//
+//    double nll = 0;
+//    my_samples* samp = (my_samples*)my_func_data;
+//    vector<double> xs = samp->xs;
+//
+//    for (int i = 0; i < xs.size(); i++)
+//    {
+//        //nll += -log(pdf(gumbDist1,xs[i]));
+//        nll += log(sca)+(xs[i]- loc)/sca + exp(-(xs[i] - loc) / sca);
+//    }
+//
+//    return nll;
+//
+//}

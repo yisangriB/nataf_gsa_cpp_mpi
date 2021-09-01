@@ -17,3 +17,11 @@ build
 # Libraries
 *.lib
 *.dll
+
+.DS_Store
+.idea/
+cmake-build-debug
+
+nataf_gsa
+nlopt/
+nlohmann/

@@ -47,6 +47,7 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 #include <string>
 #include <vector>
+#include <cmath>
 using std::string;
 using std::vector;
 
@@ -66,7 +67,7 @@ public:
 	virtual vector<double> getParam(void) = 0;
 
 	string name;
-	const double PI = 4 * atan(1);
+	const double PI = 4 * std::atan(1);
 private:
 
 
@@ -75,8 +76,7 @@ private:
 // For MLE optimization
 typedef struct MLEstr {
 	vector<double> xs;
-	vector<double> add = {};
+	vector<double> add;
 } my_samples;
 
-
-#endif RV_DIST_H
+#endif // RV_DIST_H

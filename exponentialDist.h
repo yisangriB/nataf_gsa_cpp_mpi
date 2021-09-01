@@ -57,7 +57,7 @@ using std::vector;
 class exponentialDist : public RVDist
 {
 public:
-	exponentialDist(string opt = "", vector<double> val = {}, vector<double> add = {});
+    exponentialDist(string opt = "", vector<double> val= {}, vector<double> add= {});
 	virtual ~exponentialDist();
 	double getCdf(double x);
 	double getPdf(double x);
