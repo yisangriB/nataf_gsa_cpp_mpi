@@ -115,12 +115,9 @@ int main(int argc, char** argv)
 	T.sample(inp, procno);
 
 	//
-	//	(4-1) FE Analysis - (batch samples)
-	//
-
-	//std::cout<<"Just testing this location 0\n";
-
-
+	//	(4-1) FE Analysis - (parallel)
+	//	
+	
 	T.simulateAppBatch(osType, runType, inp, procno, nprocs);
 
 	//std::cout<<"Just testing this location 1\n";
@@ -133,7 +130,7 @@ int main(int argc, char** argv)
 	if (!inp.uqType.compare("Sensitivity Analysis")) {
 
 		//
-		//	(5-1) Global sensitivity analysis
+		//	(5-1) Global sensitivity analysis - (parallel)
 		//
 
 		runForward ForwardResults(T.X, T.G, procno);
