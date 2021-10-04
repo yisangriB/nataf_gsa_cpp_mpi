@@ -62,8 +62,9 @@ runGSA::runGSA(vector<vector<double>> xval,
 	nrv = xval[0].size();
 	ncombs = combs_tmp.size();
 	int nqoi = gmat[0].size();
-	int Kos_base = std::min(Kos, int(nmc / 5));
-	Kos = Kos_base;
+	int Kos_base_main = std::min(Kos, int(nmc / 5));
+	int Kos_base_total = std::min(nrv*10, int(nmc / 5));
+
 	//std::cout<<"Just testing this location 2\n";
 
 	//
@@ -124,22 +125,20 @@ runGSA::runGSA(vector<vector<double>> xval,
 
 		// repeat GSA with different Kos untill success
 		double failIdx = -100, i = 1;
-		while ((failIdx == -100) || (Kos / i < 0.5))
+		while ((failIdx == -100) || (Kos_base_main / i < 0.5))
 		{
-			Sij = doGSA(gvec, ceil(Kos / i), 'M');
+			Sij = doGSA(gvec, ceil(Kos_base_main / i), 'M');
 			failIdx = Sij[0];
 			i *= 2;
 		}
-		Kos = Kos_base;
 
 		failIdx = -100, i = 1;
-		while ((failIdx == -100) || (Kos / i < 0.5))
+		while ((failIdx == -100) || (Kos_base_total / i < 0.5))
 		{
-			Stj = doGSA(gvec, ceil(Kos / i), 'T');
+			Stj = doGSA(gvec, ceil(Kos_base_total / i), 'T');
 			failIdx = Stj[0];
 			i *= 2;
 		}
-		Kos = Kos_base;
 
 
 		for (int i = 0; i < ncombs; i++) {
