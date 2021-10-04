@@ -71,9 +71,10 @@ target_link_libraries(nataf_gsa
 
 install(TARGETS nataf_gsa DESTINATION bin)
 
+#below works for windows
 #add_definitions(-D_ITERATOR_DEBUG_LEVEL=0) 
-if (WIN32)
-	add_definitions(-D_ITERATOR_DEBUG_LEVEL=2) 
-else()
-	add_definitions(-D_ITERATOR_DEBUG_LEVEL=0) 
-endif()
+#if (WIN32)
+#	add_definitions(-D_ITERATOR_DEBUG_LEVEL=2) 
+#else()
+#	add_definitions(-D_ITERATOR_DEBUG_LEVEL=0) 
+#endif()

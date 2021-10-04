@@ -44,10 +44,14 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 #include "jsonInput.h"
 #include <regex>
+
+
 jsonInput::jsonInput(string workDir, int procno)
 {
 	this->workDir = workDir;
-	std::ifstream myfile(workDir + "/templatedir/dakota.json");
+
+	std::filesystem::path dakotaPath  = workDir + "/templatedir/dakota.json";
+	std::ifstream myfile(dakotaPath.make_preferred());
 	if (!myfile.is_open()) {
 		std::string errMsg = "Error running UQ engine: Unable to open JSON";
 		theErrorFile.write(errMsg);
@@ -188,9 +192,12 @@ jsonInput::jsonInput(string workDir, int procno)
 			// Sample set inside vals
 			// std::string directory = elem["dataDir"];
 
+			
+			
 			std::string tmpName = elem["name"];
 			std::filesystem::path dir = workDir;
-			std::filesystem::path relPath = "templatedir\\" + tmpName + ".in";
+			std::filesystem::path relPath = "templatedir//" + tmpName + ".in";
+			relPath = relPath.make_preferred();
 			std::filesystem::path directory = dir / relPath;
 
 			std::ifstream data_table(directory);
@@ -286,7 +293,8 @@ jsonInput::jsonInput(string workDir, int procno)
 		// std::string directory = elem["dataDir"];
 		std::string tmpName = elem["name"];
 		std::filesystem::path dir = workDir;
-		std::filesystem::path relPath = "templatedir\\" + tmpName + ".in";
+		std::filesystem::path relPath = "templatedir//" + tmpName + ".in";
+		relPath = relPath.make_preferred();
 		std::filesystem::path directory = dir / relPath;
 		std::ifstream data_table(directory);
 		if (!data_table.is_open()) {
