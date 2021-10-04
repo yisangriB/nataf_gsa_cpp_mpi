@@ -11,16 +11,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # sy - to check if filesystem is working?
-try_compile(HAS_FS "${CMAKE_BINARY_DIR}/temp" 
-"${CMAKE_SOURCE_DIR}/tmp/has_filesystem.cc" 
-            CMAKE_FLAGS -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON
-            LINK_LIBRARIES stdc++fs)
-if(HAS_FS)
-    message(STATUS "Compiler has filesystem support")
-else()
-    message(FATAL_ERROR "Compiler is missing filesystem capabilities")
-endif(HAS_FS)
-
+if(LINUX) 
+	try_compile(HAS_FS "${CMAKE_BINARY_DIR}/temp" 
+	"${CMAKE_SOURCE_DIR}/tmp/has_filesystem.cc" 
+				CMAKE_FLAGS -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON
+				LINK_LIBRARIES stdc++fs)
+	if(HAS_FS)
+		message(STATUS "Compiler has filesystem support")
+	else()
+		message(FATAL_ERROR "Compiler is missing filesystem capabilities")
+	endif(HAS_FS)
+endif()
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
@@ -71,5 +72,8 @@ target_link_libraries(nataf_gsa
 install(TARGETS nataf_gsa DESTINATION bin)
 
 #add_definitions(-D_ITERATOR_DEBUG_LEVEL=0) 
-add_definitions(-D_ITERATOR_DEBUG_LEVEL=0) 
-
+if (WIN32)
+	add_definitions(-D_ITERATOR_DEBUG_LEVEL=2) 
+else()
+	add_definitions(-D_ITERATOR_DEBUG_LEVEL=0) 
+endif()

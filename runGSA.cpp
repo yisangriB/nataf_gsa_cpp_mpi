@@ -246,7 +246,7 @@ vector<double> runGSA::doGSA(vector<double> gval,int Kos,char Opt)
 		}
 
 		gmm_full model;
-		bool status = model.learn(data, Kos, maha_dist, random_subset, 30, 100, V *1.e-3, false);
+		bool status = model.learn(data, Kos, maha_dist, static_subset, 30, 100, V *1.e-3, false);
 
 		if (status == false)
 		{
