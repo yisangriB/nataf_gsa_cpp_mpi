@@ -44,10 +44,14 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 #include "jsonInput.h"
 #include <regex>
+
+
 jsonInput::jsonInput(string workDir, int procno)
 {
 	this->workDir = workDir;
-	std::ifstream myfile(workDir + "/templatedir/dakota.json");
+
+	std::filesystem::path dakotaPath  = workDir + "/templatedir/dakota.json";
+	std::ifstream myfile(dakotaPath.make_preferred());
 	if (!myfile.is_open()) {
 		std::string errMsg = "Error running UQ engine: Unable to open JSON";
 		theErrorFile.write(errMsg);
@@ -186,11 +190,20 @@ jsonInput::jsonInput(string workDir, int procno)
 		if (opts[nrv].compare("DAT") == 0) {
 
 			// Sample set inside vals
-			std::string directory = elem["dataDir"];
+			// std::string directory = elem["dataDir"];
+
+			
+			
+			std::string tmpName = elem["name"];
+			std::filesystem::path dir = workDir;
+			std::filesystem::path relPath = "templatedir//" + tmpName + ".in";
+			relPath = relPath.make_preferred();
+			std::filesystem::path directory = dir / relPath;
+
 			std::ifstream data_table(directory);
 			if (!data_table.is_open()) {
 				//*ERROR*
-				std::string errMsg = "Error reading json: cannot open data file at " + directory;
+				std::string errMsg = "Error reading json: cannot open data file: " + directory.u8string();
 				theErrorFile.write(errMsg);
 			}
 
@@ -277,11 +290,16 @@ jsonInput::jsonInput(string workDir, int procno)
 		auto elem = UQjson["randomVariables"][i];
 
 		// Sample set inside vals
-		std::string directory = elem["dataDir"];
+		// std::string directory = elem["dataDir"];
+		std::string tmpName = elem["name"];
+		std::filesystem::path dir = workDir;
+		std::filesystem::path relPath = "templatedir//" + tmpName + ".in";
+		relPath = relPath.make_preferred();
+		std::filesystem::path directory = dir / relPath;
 		std::ifstream data_table(directory);
 		if (!data_table.is_open()) {
 			//*ERROR*
-			std::string errMsg = "Error reading json: cannot open data file at " + directory;
+			std::string errMsg = "Error reading json: cannot open data file at " + directory.u8string();
 			theErrorFile.write(errMsg);
 		}
 
@@ -456,11 +474,9 @@ void
 jsonInput::fromTextToId(string groupTxt, vector<string>& groupPool, vector<vector<int>>& groupIdVect)
 {
 	int nrv = groupPool.size();
-	std::cerr << "we are here : " << groupTxt <<"\n";
     std::regex re(R"(\{([^}]+)\})"); // will get string inside {}
     //std::regex re(""); // will get string inside {}
     //auto re = std::regex("Hello");
-    std::cerr <<"end hello world\n";
     std::sregex_token_iterator it(groupTxt.begin(), groupTxt.end(), re, 1);
 	std::sregex_token_iterator end;
 	while (it != end) {
@@ -498,7 +514,6 @@ jsonInput::fromTextToStr(string groupTxt, vector<vector<string>>& groupStringVec
 {
     int a=3;
 
-    std::cerr << "hello: " << groupTxt <<"\n";
     std::regex re(R"(\{([^}]+)\})"); // will get string inside {}
     //std::regex re("\\w+");
     //std::regex re;
