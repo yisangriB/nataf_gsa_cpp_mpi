@@ -252,10 +252,22 @@ vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
 		//bool status = model.learn(data, Kos, maha_dist, static_subset, 30, 100, V *1.e-3, false);
 		double oldLogL = -INFINITY, logL;
 		bool status;
+
+
+		int Kthres;
+		if (Opt == 'T')
+		{
+			Kthres = nmc / 100; // total
+		}
+		else
+		{
+			Kthres = nmc / 10;   // main
+		}
+
 		while (1) {
 			status = model.learn(data, Kos, maha_dist, static_subset, 500, 500, V * 1.e-15, false);// max kmeans iter = 100, max EM iter = 200, convergence variance = V*1.e-15
 			logL = model.sum_log_p(data);
-			if ((logL < oldLogL) || (Kos >= nmc / 5)) {
+			if ((logL < oldLogL) || (Kos >= Kthres)) {
 				break;
 			}
 			else {
