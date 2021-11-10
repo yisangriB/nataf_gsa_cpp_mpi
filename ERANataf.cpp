@@ -210,7 +210,10 @@ ERANataf::ERANataf(jsonInput inp, int procno)
 			RhozMat(i, j) = Rhoz[i][j];
 		}
 	}
-	RhozInv = RhozMat.inverse();
+
+	if (nrv>0) {
+	    RhozInv = RhozMat.inverse();
+	}
 
 	// Cholesky decomposition of correlation matrix
 	Eigen::LLT<Eigen::MatrixXd> llt(RhozMat);
