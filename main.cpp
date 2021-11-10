@@ -136,7 +136,7 @@ int main(int argc, char** argv)
 		runForward ForwardResults(T.X, T.G, procno);
 		ForwardResults.writeTabOutputs(inp, procno); 	//	Write dakotaTab.out
 
-		runGSA GsaResults(T.X, T.G, inp.groups, 25, procno, nprocs); // int Kos = 25;
+		runGSA GsaResults(T.X, T.G, inp.groups, 1, procno, nprocs); // int Kos = 25;
 
 		//elapsedTime = (std::chrono::high_resolution_clock::now() - elapseStart).count();
 		elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - elapseStart).count()/1.e3;
