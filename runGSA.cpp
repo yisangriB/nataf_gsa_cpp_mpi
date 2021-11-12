@@ -62,8 +62,8 @@ runGSA::runGSA(vector<vector<double>> xval,
 	nrv = xval[0].size();
 	ncombs = combs_tmp.size();
 	int nqoi = gmat[0].size();
-	int Kos_base_main = std::min(Kos, int(nmc / 20));
-	int Kos_base_total = std::min(Kos, int(nmc / 20));
+	int Kos_base_main = std::min(Kos, int(ceil(nmc / 20.0)));
+	int Kos_base_total = std::min(Kos, int(ceil(nmc / 20.0)));
 
 	//std::cout<<"Just testing this location 2\n";
 
@@ -273,7 +273,7 @@ vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
 			else {
 				oldLogL = logL;
 				Kos = Kos + 1;
-				printf("increasing Ko to %i, ll=%.f3\n", Kos, logL);
+				//printf("increasing Ko to %i, ll=%.f3\n", Kos, logL);
 			}
 		}
 		printf("FINAL Ko = %i \n", Kos);
