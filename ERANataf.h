@@ -79,12 +79,14 @@ public:
 	vector<vector<double>> U2X(int nmc, vector<vector<double>> u);
 	//ERADist **M_;
 	vector<ERADist> M;
-	void simulateAppBatch(string osType, 
+	void simulateAppBatch(string workflowDriver,
+						 string osType, 
 						 string runType, 
 						 jsonInput inp, 
 						 int procno,
 						 int nproc);
-	void simulateAppSequential(string osType,
+	void simulateAppSequential(string workflowDriver, 
+						string osType,
 						string runType,
 						jsonInput inp,
 						vector<vector<double>> u,
@@ -98,6 +100,7 @@ public:
 						int qoi,
 						vector<string> rvNames,
 						vector<double> xs,
+						string workflowDriver,
 						string osType,
 						string runType);
 	void sample(jsonInput inp, int procno);

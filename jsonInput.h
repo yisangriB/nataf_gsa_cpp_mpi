@@ -65,7 +65,7 @@ using std::vector;
 class jsonInput
 {
 public:
-	jsonInput(string workDir, int procno);
+	jsonInput(string workDir, string inpFile, int procno);
 	virtual ~jsonInput(void);
 
 	string workDir;

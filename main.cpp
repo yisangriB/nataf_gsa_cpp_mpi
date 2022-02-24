@@ -71,17 +71,29 @@ int main(int argc, char** argv)
     std::regex re(R"(\{([^}]+)\})");
     std::cerr << "testing\n";
 
-	if ((argc != 4) && (procno == 0)) {
+	if ((argc != 6) && (procno == 0)) {
 		std::string errMsg = "Number of the additional commend line arguments is " + std::to_string(argc - 1) + ", but 3 is required. The arguments should always include the working directory / os type / run type";
 		std::cerr << errMsg << std::endl;
 		theErrorFile.abort();
 	}
 
+	//std::string workDir = argv[1];
+	//std::string osType = argv[2];
+	//std::string runType = argv[3];
+
 	std::string workDir = argv[1];
-	std::string osType = argv[2];
-	std::string runType = argv[3];
+	std::string inpFile = argv[2];
+	std::string workflowDriver = argv[3];
+	std::string osType = argv[4];
+	std::string runType = argv[5];
+
+
+
+
 
 	if (procno == 0) std::cerr << "* WORKDIR: " << workDir << "\n";
+	if (procno == 0) std::cerr << "* INPFILE: " << inpFile << "\n";
+	if (procno == 0) std::cerr << "* WORKDRIVER: " << workflowDriver << "\n";
 	if (procno == 0) std::cerr << "* OS: " << osType << "\n";
 	if (procno == 0) std::cerr << "* RUN: " << runType << "\n\n";
 
@@ -100,7 +112,7 @@ int main(int argc, char** argv)
 	//  (1) read JSON file
 	//
 
-	jsonInput inp(workDir, procno);
+	jsonInput inp(workDir, inpFile, procno);
 
 	//
 	//	(2) Construct Nataf Object
@@ -118,7 +130,7 @@ int main(int argc, char** argv)
 	//	(4-1) FE Analysis - (parallel)
 	//	
 	
-	T.simulateAppBatch(osType, runType, inp, procno, nprocs);
+	T.simulateAppBatch(workflowDriver, osType, runType, inp, procno, nprocs);
 
 	//std::cout<<"Just testing this location 1\n";
 

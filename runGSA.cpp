@@ -144,6 +144,10 @@ runGSA::runGSA(vector<vector<double>> xval,
 		Sij = doGSA(gvec, Kos_base_main, 'M');
 		Stj = doGSA(gvec, Kos_base_total, 'T');
 
+		if (Stj < Sij) {
+			Stj = Sij;
+		}
+
 		for (int i = 0; i < ncombs; i++) {
 			SmTmp[nq * ncombs + i] = Sij[i];
 			StTmp[nq * ncombs + i] = Stj[i];

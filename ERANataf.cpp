@@ -469,7 +469,14 @@ double ERANataf::normCdf(double x)
 	return 0.5 * (1.0 + sign * y);
 }
 
-void ERANataf::simulateAppBatch(string osType, 
+//void ERANataf::simulateAppBatch(string osType, 
+//								string runType, 
+//								jsonInput inp, 
+//								int procno, 
+//								int nproc)
+
+void ERANataf::simulateAppBatch(string workflowDriver,
+								string osType, 
 								string runType, 
 								jsonInput inp, 
 								int procno, 
@@ -574,7 +581,7 @@ void ERANataf::simulateAppBatch(string osType,
 
 		//std::cerr << "FEM simulation running in parallel: procno =" + std::to_string(procno) + " for id=" +std::to_string(id) + "\n";;
 		if (id < inp.nmc) {
-			vector<double> res = simulateAppOnce(id, inp.workDir, copyDir, inp.nrv + inp.nco + inp.nre, inp.nqoi, inp.rvNames, x[id], osType, runType);
+			vector<double> res = simulateAppOnce(id, inp.workDir, copyDir, inp.nrv + inp.nco + inp.nre, inp.nqoi, inp.rvNames, x[id], workflowDriver, osType, runType);
 
 			for (int j = 0; j < inp.nqoi; j++) {
 				tmpres[i * inp.nqoi + j] = res[j];
@@ -602,7 +609,7 @@ void ERANataf::simulateAppBatch(string osType,
 	G = gvals;
 }
 
-vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyDir, int nrvcore, int nqoi, vector<string> rvNames, vector<double> xs, string osType, string runType)
+vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyDir, int nrvcore, int nqoi, vector<string> rvNames, vector<double> xs, string workflowDriver, string osType, string runType)
 {
 
 	//
@@ -658,9 +665,9 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 	// (4) run workflow_driver.bat(e.g. It will make "SimCenterInput.tcl" and run OpenSees)
 	//
 
-	std::string workflowDriver = "workflow_driver";
-	if ((osType.compare("Windows") == 0) && (runType.compare("runningLocal") == 0))
-		workflowDriver = "workflow_driver.bat >nul 2>nul";
+	//std::string workflowDriver = "workflow_driver";
+	//if ((osType.compare("Windows") == 0) && (runType.compare("runningLocal") == 0))
+	//	workflowDriver = "workflow_driver.bat >nul 2>nul";
 
 	string workflowDriver_string = "cd " + workDir + " && " + workDir + "/" + workflowDriver;
 

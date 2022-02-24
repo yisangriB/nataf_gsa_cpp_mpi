@@ -46,11 +46,11 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <regex>
 
 
-jsonInput::jsonInput(string workDir, int procno)
+jsonInput::jsonInput(string workDir, string inpFile, int procno)
 {
 	this->workDir = workDir;
 
-	std::filesystem::path dakotaPath  = workDir + "/templatedir/dakota.json";
+	std::filesystem::path dakotaPath  = workDir + "/templatedir/" + inpFile);;
 	std::ifstream myfile(dakotaPath.make_preferred());
 	if (!myfile.is_open()) {
 		std::string errMsg = "Error running UQ engine: Unable to open JSON";
