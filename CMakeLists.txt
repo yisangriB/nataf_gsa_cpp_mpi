@@ -2,16 +2,25 @@ cmake_minimum_required(VERSION 3.10)
 
 project(nataf_gsa_project)
 
+#if(LINUX) 
+	set ( PARALLEL_LIB "MPI")
+#else()
+#	set ( PARALLEL_LIB "OPENMP")
+#endif()
+
 
 # sy- add mpi
-# find_package(OpenMP)
- find_package(MPI REQUIRED)
-
+# Find the package
+if(PARALLEL_LIB STREQUAL  "MPI") 
+	find_package(MPI REQUIRED)
+else()
+	find_package(OpenMP REQUIRED) # Find the package
+endif() 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# sy - to check if filesystem is working?
-if(LINUX) 
+if(LINUX)
+	# sy - to check if filesystem is working?
 	try_compile(HAS_FS "${CMAKE_BINARY_DIR}/temp" 
 	"${CMAKE_SOURCE_DIR}/tmp/has_filesystem.cc" 
 				CMAKE_FLAGS -DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON
@@ -25,6 +34,8 @@ endif()
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup(TARGETS)
+# for visual studio, do on commandline: conan install . -s build_type=Debug -if=C:/Users/SimCenter/Sangri/nataf_gsa_cpp/out/build/x64-Debug/
+# for for CLION, do on build_release folder
 
 set(SOURCES main.cpp
 	    ERADist.cpp
@@ -47,34 +58,30 @@ set(SOURCES main.cpp
 	    writeErrors.cpp)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib_armadillo/armadillo-10.1.0/include)
-include_directories(${MPI_INCLUDE_PATH})
 
-add_executable(nataf_gsa ${SOURCES})
-target_link_libraries(nataf_gsa
-	CONAN_PKG::boost
-	CONAN_PKG::jsonformoderncpp	
-	CONAN_PKG::nlopt
-	CONAN_PKG::eigen
-	CONAN_PKG::mkl-static
-	${MPI_LIBRARIES}
-	)
+if(PARALLEL_LIB STREQUAL  "MPI") 
+	include_directories(${MPI_INCLUDE_PATH})
+	add_executable(nataf_gsa ${SOURCES})
+	target_link_libraries(nataf_gsa
+		CONAN_PKG::boost
+		CONAN_PKG::jsonformoderncpp	
+		CONAN_PKG::nlopt
+		CONAN_PKG::eigen
+		CONAN_PKG::mkl-static
+		${MPI_LIBRARIES}
+		)
+		add_compile_definitions(MPI)
 
-#if(MPI_COMPILE_FLAGS)
-#  set_target_properties(nataf_gsa PROPERTIES
-#    COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
-#endif()
-
-#if(MPI_LINK_FLAGS)
-#  set_target_properties(nataf_gsa PROPERTIES
-#    LINK_FLAGS "${MPI_LINK_FLAGS}")
-#endif()
+else()
+	add_executable(nataf_gsa ${SOURCES})
+	target_link_libraries(nataf_gsa
+		CONAN_PKG::boost
+		CONAN_PKG::jsonformoderncpp	
+		CONAN_PKG::nlopt
+		CONAN_PKG::eigen
+		CONAN_PKG::mkl-static
+		OpenMP::OpenMP_CXX)
+	add_compile_definitions(OPENMP)
+endif() 
 
 install(TARGETS nataf_gsa DESTINATION bin)
-
-#below works for windows
-#add_definitions(-D_ITERATOR_DEBUG_LEVEL=0) 
-#if (WIN32)
-#	add_definitions(-D_ITERATOR_DEBUG_LEVEL=2) 
-#else()
-#	add_definitions(-D_ITERATOR_DEBUG_LEVEL=0) 
-#endif()

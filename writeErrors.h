@@ -49,7 +49,9 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <iostream>
 #include <fstream>
 
-#include <mpi.h>
+#ifdef MPI
+	#include <mpi.h>
+#endif
 
 class writeErrors
 {

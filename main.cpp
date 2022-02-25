@@ -56,40 +56,49 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <regex>
 
 #include "writeErrors.h"
-writeErrors theErrorFile; // Error log
 
-#include <mpi.h>
+#ifdef MPI
+	#include <mpi.h>
+#endif
+
+writeErrors theErrorFile; // Error log
 
 int main(int argc, char** argv)
 {
-	MPI_Comm comm; int nprocs, procno;
-	MPI_Init(&argc, &argv);
-	comm = MPI_COMM_WORLD;
-	MPI_Comm_rank(comm, &procno);
-	MPI_Comm_size(comm, &nprocs);
 
-    std::regex re(R"(\{([^}]+)\})");
-    std::cerr << "testing\n";
 
-	if ((argc != 6) && (procno == 0)) {
-		std::string errMsg = "Number of the additional commend line arguments is " + std::to_string(argc - 1) + ", but 3 is required. The arguments should always include the working directory / os type / run type";
-		std::cerr << errMsg << std::endl;
-		theErrorFile.abort();
-	}
+	int nprocs, procno;
+	#ifdef MPI
+		MPI_Comm comm;
+		MPI_Init(&argc, &argv);
+		comm = MPI_COMM_WORLD;
+		MPI_Comm_rank(comm, &procno);
+		MPI_Comm_size(comm, &nprocs);		
+		if (procno == 0) std::cerr << "Main - running MPI" << std::endl;
+        if (procno == 0) std::cerr << "num proc = " << nprocs << std::endl;
 
-	//std::string workDir = argv[1];
-	//std::string osType = argv[2];
-	//std::string runType = argv[3];
+	#else
+		procno = 0;
+		nprocs = 1;
+		if (procno == 0) std::cerr << "running OpenMP" << std::endl;
+	#endif
+
+
+		//std::regex re(R"(\{([^}]+)\})");
+		//std::cerr << "testing\n";
+
+		if ((argc != 6) && (procno == 0)) {
+			std::string errMsg = "Number of the additional commend line arguments is " + std::to_string(argc - 1) + ", but 5 is required. The arguments should always include the working directory / input file name / workflow driver name / os type / run type";
+			std::cerr << errMsg << std::endl;
+			theErrorFile.abort();
+		}
+
 
 	std::string workDir = argv[1];
 	std::string inpFile = argv[2];
 	std::string workflowDriver = argv[3];
 	std::string osType = argv[4];
 	std::string runType = argv[5];
-
-
-
-
 
 	if (procno == 0) std::cerr << "* WORKDIR: " << workDir << "\n";
 	if (procno == 0) std::cerr << "* INPFILE: " << inpFile << "\n";
@@ -166,7 +175,13 @@ int main(int argc, char** argv)
 	}
 	theErrorFile.close();
 	if (procno == 0) std::cout << "Elapsed time: " << elapsedTime << " s\n";
-	MPI_Finalize();
+
+	#ifdef MPI
+		MPI_Finalize();
+		theErrorFile.print("MPI done");
+	#elif
+		theErrorFile.print("OpenMP done");
+	#endif
 	return 0;
 }
 

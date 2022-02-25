@@ -44,7 +44,6 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 #include "writeErrors.h"
 writeErrors::writeErrors() {}
-
 writeErrors::~writeErrors() {}
 
 
@@ -86,5 +85,9 @@ void writeErrors::close() {
 }
 
 void writeErrors::abort() {
+#ifdef MPI
 	MPI_Abort(MPI_COMM_WORLD, -1);
+#else
+	exit(-1);
+#endif
 }

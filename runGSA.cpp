@@ -67,107 +67,136 @@ runGSA::runGSA(vector<vector<double>> xval,
 
 	//std::cout<<"Just testing this location 2\n";
 
-	//
-	// MPI
-	//
-	int chunkSize = std::ceil(double(nqoi) / double(nprocs));
-	//int lastChunk = inp.nmc - chunkSize * (nproc-1);
-	double* SmAll = (double*)malloc(ncombs * chunkSize * nprocs * sizeof(double));
-	double* SmTmp = (double*)malloc(ncombs * chunkSize * sizeof(double));
-	double* StAll = (double*)malloc(ncombs * chunkSize * nprocs * sizeof(double));
-	double* StTmp = (double*)malloc(ncombs * chunkSize * sizeof(double));
-	// for each QoI
-	//std::cout<<"Just testing this location 3 \n";
-	for (int nq = 0; nq < chunkSize ; nq++) {
-		int id = chunkSize * procno + nq;
-		if (id >= nqoi) { // dummy
-			for (int i = 0; i < ncombs; i++) {
-				StTmp[nq * ncombs + i] = 0.;
-				SmTmp[nq * ncombs + i] = 0.;
+	#ifdef MPI
+        std::cout<<"sensitivity running MPI " << std::endl;
+
+		//
+		// MPI
+		//
+
+		int chunkSize = std::ceil(double(nqoi) / double(nprocs));
+		//int lastChunk = inp.nmc - chunkSize * (nproc-1);
+		double* SmAll = (double*)malloc(ncombs * chunkSize * nprocs * sizeof(double));
+		double* SmTmp = (double*)malloc(ncombs * chunkSize * sizeof(double));
+		double* StAll = (double*)malloc(ncombs * chunkSize * nprocs * sizeof(double));
+		double* StTmp = (double*)malloc(ncombs * chunkSize * sizeof(double));
+		// for each QoI
+		//std::cout<<"Just testing this location 3 \n";
+		for (int nq = 0; nq < chunkSize ; nq++) {
+			int id = chunkSize * procno + nq;
+			if (id >= nqoi) { // dummy
+				for (int i = 0; i < ncombs; i++) {
+					StTmp[nq * ncombs + i] = 0.;
+					SmTmp[nq * ncombs + i] = 0.;
+				}
+				continue;
 			}
-			continue;
-		}
 
-		vector<double> gvec;
-		double sqDiff = 0;
-		gvec.reserve(nmc);
-		for (int i = 0; i < nmc; i++) {
-			gvec.push_back(gmat[i][id]);
-		}
-
-		// check if the variance is zero
-		double mean = 0;
-		for (int i = 0; i < nmc; i++)
-			mean += gvec[i];
-
-		mean = mean / double(nmc);
-		for (int i = 0; i < nmc; i++)
-			sqDiff += (gmat[i][id] - mean) * (gmat[i][id] - mean);
-
-		//double var = sqDiff / nmc;
-		if (sqDiff < 1.e-10) {
-			//theErrorFile << "Error running FEM: the variance of output is zero. Output value is " << mean;
-			//theErrorFile.close();
-			//exit(1);
-			//vector<double> zeros(ncombs, 0.0);
-			//Simat.push_back(zeros);
-			//Stmat.push_back(zeros);
-			//continue;
-			for (int i = 0; i < ncombs; i++) {
-				StTmp[nq * ncombs + i] = 0.;
-				SmTmp[nq * ncombs + i] = 0.;
+			vector<double> gvec;
+			double sqDiff = 0;
+			gvec.reserve(nmc);
+			for (int i = 0; i < nmc; i++) {
+				gvec.push_back(gmat[i][id]);
 			}
-			continue;
-		};
 
-		vector<double> Sij, Stj;
+			// check if the variance is zero
+			double mean = 0;
+			for (int i = 0; i < nmc; i++)
+				mean += gvec[i];
 
+			mean = mean / double(nmc);
+			for (int i = 0; i < nmc; i++)
+				sqDiff += (gmat[i][id] - mean) * (gmat[i][id] - mean);
 
-		// repeat GSA with different Kos untill success
-		/*
-		double failIdx = -100, i = 1;
-		while ((failIdx == -100) || (Kos_base_main / i < 0.5))
-		{
-			Sij = doGSA(gvec, ceil(Kos_base_main / i), 'M');
-			failIdx = Sij[0];
-			i *= 2;
+			//double var = sqDiff / nmc;
+			if (sqDiff < 1.e-10) {
+				//theErrorFile << "Error running FEM: the variance of output is zero. Output value is " << mean;
+				//theErrorFile.close();
+				//exit(1);
+				//vector<double> zeros(ncombs, 0.0);
+				//Simat.push_back(zeros);
+				//Stmat.push_back(zeros);
+				//continue;
+				for (int i = 0; i < ncombs; i++) {
+					StTmp[nq * ncombs + i] = 0.;
+					SmTmp[nq * ncombs + i] = 0.;
+				}
+				continue;
+			};
+
+			vector<double> Sij, Stj;
+
+			Sij = doGSA(gvec, Kos_base_main, 'M');
+			Stj = doGSA(gvec, Kos_base_total, 'T');
+
+			if (Stj < Sij) {
+				Stj = Sij;
+			}
+
+			for (int i = 0; i < ncombs; i++) {
+				SmTmp[nq * ncombs + i] = Sij[i];
+				StTmp[nq * ncombs + i] = Stj[i];
+			}
+			//Simat.push_back(Stj);
+			//Stmat.push_back(Sij);
+		}
+		MPI_Allgather(StTmp, ncombs * chunkSize, MPI_DOUBLE, StAll, ncombs * chunkSize, MPI_DOUBLE, MPI_COMM_WORLD);
+		MPI_Allgather(SmTmp, ncombs * chunkSize, MPI_DOUBLE, SmAll, ncombs * chunkSize, MPI_DOUBLE, MPI_COMM_WORLD);
+		for (int i = 0; i < nqoi; i++) {
+			vector<double> StVectmp(ncombs,0), SmVectmp(ncombs, 0);
+			for (int j = 0; j < ncombs; j++) {
+				StVectmp[j] = StAll[i * ncombs + j];
+				SmVectmp[j] = SmAll[i * ncombs + j];
+			}
+			Stmat.push_back(StVectmp);
+			Simat.push_back(SmVectmp);
+		}
+	#else
+
+    std::cout<<"sensitivity running open MP " << std::endl;
+		for (int j = 0; j < nqoi; j++) {
+
+			vector<double> gvec;
+			double sqDiff = 0;
+			gvec.reserve(nmc);
+			for (int i = 0; i < nmc; i++) {
+				gvec.push_back(gmat[i][j]);
+			}
+
+			// check if the variance is zero
+			double mean = 0;
+			for (int i = 0; i < nmc; i++)
+				mean += gvec[i];
+
+			mean = mean / double(nmc);
+			for (int i = 0; i < nmc; i++)
+				sqDiff += (gmat[i][j] - mean) * (gmat[i][j] - mean);
+
+			//double var = sqDiff / nmc;
+			if (sqDiff < 1.e-10) {
+				vector<double> zeros(ncombs, 0.0);
+				Simat.push_back(zeros);
+				Stmat.push_back(zeros);
+				continue;
+			};
+
+			vector<double> Sij, Stj;
+
+			Sij = doGSA(gvec, Kos, 'M');
+			Stj = doGSA(gvec, Kos, 'T');
+
+			vector<double> Si_temp, Kos, St_temp;
+
+			for (int nc = 0; nc < ncombs; nc++) {
+				if (Stj[nc] < Sij[nc]) {
+					Stj[nc] = Sij[nc];
+				}
+			}
+			Simat.push_back(Sij);
+			Stmat.push_back(Stj);
 		}
 
-		failIdx = -100, i = 1;
-		while ((failIdx == -100) || (Kos_base_total / i < 0.5))
-		{
-			Stj = doGSA(gvec, ceil(Kos_base_total / i), 'T');
-			failIdx = Stj[0];
-			i *= 2;
-		}
-		*/
-		Sij = doGSA(gvec, Kos_base_main, 'M');
-		Stj = doGSA(gvec, Kos_base_total, 'T');
-
-		if (Stj < Sij) {
-			Stj = Sij;
-		}
-
-		for (int i = 0; i < ncombs; i++) {
-			SmTmp[nq * ncombs + i] = Sij[i];
-			StTmp[nq * ncombs + i] = Stj[i];
-		}
-		//Simat.push_back(Stj);
-		//Stmat.push_back(Sij);
-	}
-	MPI_Allgather(StTmp, ncombs * chunkSize, MPI_DOUBLE, StAll, ncombs * chunkSize, MPI_DOUBLE, MPI_COMM_WORLD);
-	MPI_Allgather(SmTmp, ncombs * chunkSize, MPI_DOUBLE, SmAll, ncombs * chunkSize, MPI_DOUBLE, MPI_COMM_WORLD);
-	for (int i = 0; i < nqoi; i++) {
-		vector<double> StVectmp(ncombs,0), SmVectmp(ncombs, 0);
-		for (int j = 0; j < ncombs; j++) {
-			StVectmp[j] = StAll[i * ncombs + j];
-			SmVectmp[j] = SmAll[i * ncombs + j];
-		}
-		Stmat.push_back(StVectmp);
-		Simat.push_back(SmVectmp);
-	}
-
-
+	#endif
 }
 
 vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)

@@ -49,9 +49,14 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include "jsonInput.h"
 #include "Eigen/Dense"
 #include "writeErrors.h"
+//#define MPI
 
-#include <mpi.h>
-//extern std::ofstream theErrorFile; // Error log
+#ifdef MPI
+	#include <mpi.h>
+#else
+	#include <omp.h>
+#endif
+ //extern std::ofstream theErrorFile; // Error log
 
 extern writeErrors theErrorFile; // Error log
 

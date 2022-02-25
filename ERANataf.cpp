@@ -48,9 +48,9 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <iostream>
 #include <random>
 #include <filesystem>
+#include "nlopt.hpp"
 
 //#include <chrono>
-#include "nlopt.hpp"
 
 double natafObjec(unsigned n, const double* rho0, double* grad, void* my_func_data);
 using boost::math::normal;
@@ -59,6 +59,12 @@ ERANataf::ERANataf() {}
 
 ERANataf::ERANataf(jsonInput inp, int procno)
 {
+
+#ifdef MPI
+    std::cout << "Nataf is running MPI" <<std::endl;
+#else
+    std::cout << "Nataf is running OpenMP" <<std::endl;
+#endif
 
 	//
 	//	Define Marginal Distributions & corr
@@ -157,11 +163,11 @@ ERANataf::ERANataf(jsonInput inp, int procno)
 			{
 				// solving Nataf euqtion
 				double Rhozij[1] = { Rhoxij };
-				
+
 				if (fxiTmp[nri][0] ==0)
 					for (int ng = 0; ng < ngrid; ng++)
 						fxiTmp[nri][ng] = (mydisti->getQuantile(cdf(stdNorm, points[ng])) - meani) / (stdi) *weights[ng];
-				
+
 				if (fxiTmp[nrj][0] == 0)
 					for (int ng = 0; ng < ngrid; ng++)
 						fxiTmp[nrj][ng] = (mydistj->getQuantile(cdf(stdNorm, points[ng])) - meanj) / (stdj) * weights[ng];
@@ -182,9 +188,9 @@ ERANataf::ERANataf(jsonInput inp, int procno)
 
 				nlopt_set_min_objective(optim, natafObjec, &addVars);
 				nlopt_set_xtol_rel(optim, 1e-6);
-				double minf; // `*`the` `minimum` `objective` `value,` `upon` `return`*` 
+				double minf; // `*`the` `minimum` `objective` `value,` `upon` `return`*`
 
-				
+
 				if (nlopt_optimize(optim, Rhozij, &minf) < 0) {
 					std::string errMsg = "Error running UQ engine: Nataf optimization failed (nlopt failed)";
 					theErrorFile.write(errMsg);
@@ -217,7 +223,7 @@ ERANataf::ERANataf(jsonInput inp, int procno)
 
 	// Cholesky decomposition of correlation matrix
 	Eigen::LLT<Eigen::MatrixXd> llt(RhozMat);
-	
+
 	if (llt.info() == Eigen::NumericalIssue)
 	{
 		std::string errMsg = "Error running UQ engine: Nataf transformation is not applicable (not positive definite)";
@@ -245,7 +251,7 @@ vector<vector<double>> ERANataf::X2U(int nmc, vector<vector<double>> x)
 {
 	vector<vector<double>> u(nmc, vector<double>(nrv, 0.0));
 	Eigen::MatrixXd zvec(nrv, nmc);
-	
+
 	//normal stdNorm(0., 1.);
 	for (int nr = 0; nr < nrv; nr++)
 	{
@@ -268,7 +274,7 @@ vector<vector<double>> ERANataf::U2X(int nmc, vector<vector<double>> u)
 	vector<vector<double>> x(nmc, vector<double>(nrv, 0.0));
 	Eigen::MatrixXd uvec(nrv,nmc); // transpose
 	for (int ns = 0 ; ns <nmc ; ns++)
-	{ 
+	{
 		for (int nr = 0; nr < nrv; nr++)
 			uvec(nr,ns) = u[ns][nr];
 	}
@@ -279,10 +285,10 @@ vector<vector<double>> ERANataf::U2X(int nmc, vector<vector<double>> u)
 	{
 		RVDist *theDist = M[nr].theDist;
 		for (int ns = 0; ns < nmc; ns++)
-		{ 
+		{
 			x[ns][nr] = theDist->getQuantile(normCdf(zvec(nr, ns)));
 		}
-		
+
 	}
 	return x;
 }
@@ -339,7 +345,7 @@ void ERANataf::quadGL(int N, double a, double b, vector<double> &x, vector<doubl
 		Lp.push_back(0.);
 		maxEps = std::max(abs(y[i] - y0[i]), maxEps);
 	}
-	
+
 	while (maxEps > 1.e-10)
 	{
 		//vector<double> L_ = 1;
@@ -397,9 +403,9 @@ double ERANataf::mvncdfR(Eigen::VectorXd u)
 		return cdf(stdNorm, u(0));
 	}
 	else
-	{ 
+	{
 		// Genz, A. and F. Bretz (1999) "Numerical Computation of Multivariat t Probabilities with Application to Power Calculation of Multiple
-		// Contrasts", J.Statist.Comput.Simul., 63:361-378. - 
+		// Contrasts", J.Statist.Comput.Simul., 63:361-378. -
 
 		// A is C in genz
 		// a=-inf in genz
@@ -442,7 +448,7 @@ double ERANataf::mvncdfR(Eigen::VectorXd u)
 			//varsum += f(m - 1) * f(m - 1);
 		}
 		return intVal;
-	}	
+	}
 }
 
 double ERANataf::normCdf(double x)
@@ -469,17 +475,17 @@ double ERANataf::normCdf(double x)
 	return 0.5 * (1.0 + sign * y);
 }
 
-//void ERANataf::simulateAppBatch(string osType, 
-//								string runType, 
-//								jsonInput inp, 
-//								int procno, 
+//void ERANataf::simulateAppBatch(string osType,
+//								string runType,
+//								jsonInput inp,
+//								int procno,
 //								int nproc)
 
 void ERANataf::simulateAppBatch(string workflowDriver,
-								string osType, 
-								string runType, 
-								jsonInput inp, 
-								int procno, 
+								string osType,
+								string runType,
+								jsonInput inp,
+								int procno,
 								int nproc)
 {
 	//
@@ -532,6 +538,7 @@ void ERANataf::simulateAppBatch(string workflowDriver,
 		// If we find result.out in the templete dir. emit error;
 		//
 
+
 		std::string existingResultsFile = inp.workDir + "/templatedir/results.out";
 		if (std::filesystem::exists(existingResultsFile)) {
 			//*ERROR*
@@ -539,71 +546,83 @@ void ERANataf::simulateAppBatch(string workflowDriver,
 			theErrorFile.write(errMsg);
 		}
 
-		std::string existingParamsFile = inp.workDir + "/templatedir/results.out";
+		std::string existingParamsFile = inp.workDir + "/templatedir/params.in";
 		if (std::filesystem::exists(existingParamsFile)) {
 			//*ERROR*
 			std::string errMsg = "Error running SimCenterUQ: your templete directory already contains params.in file. Please clean up the directory where input file is located.";
 			theErrorFile.write(errMsg);
 		}
-
 	}
 
+    //std::cout<<"here it is";
 	//
 	// Run Apps
 	//
 
-	// 
-	// OpenMP
-	// 
 
-	//#pragma omp parallel for shared(gval) private(i)	
-	//gval.resize(inp.nmc);
-	//for (i = 0; i < inp.nmc; i++)
-	//{
-	//	gval[i] = simulateAppOnce(i, inp.workDir, copyDir, inp.nrv + inp.nco + inp.nre, inp.nqoi, inp.rvNames, x[i], osType, runType);
-	//}
 
-	// 
-	// MPI
+	#ifdef MPI
+        std::cout<<"simulateAppBatch is running MPI" <<std::endl;
+		//
+		// MPI
+		//
+
+		//std::cout <<"Testing here 1 \n";
+		int chunkSize = std::ceil(double(inp.nmc) / double(nproc));
+		//int lastChunk = inp.nmc - chunkSize * (nproc-1);
+		double* rbuf;
+		rbuf = (double*)malloc(inp.nqoi * chunkSize * nproc * sizeof(double));
+		double* tmpres = (double*)malloc(inp.nqoi * chunkSize * sizeof(double));
+		//std::cout <<"Testing here 2 \n";
+
+		MPI_Barrier( MPI_COMM_WORLD); // To make sure tempdir is clean.
+		for (int i = 0; i < chunkSize; i ++)
+		{
+			int id = chunkSize * procno + i;
+
+			//std::cerr << "FEM simulation running in parallel: procno =" + std::to_string(procno) + " for id=" +std::to_string(id) + "\n";;
+			if (id < inp.nmc) {
+				vector<double> res = simulateAppOnce(id, inp.workDir, copyDir, inp.nrv + inp.nco + inp.nre, inp.nqoi, inp.rvNames, x[id], workflowDriver, osType, runType);
+
+				for (int j = 0; j < inp.nqoi; j++) {
+					tmpres[i * inp.nqoi + j] = res[j];
+				}
+			}
+			else {
+				for (int j = 0; j < inp.nqoi; j++) {
+					tmpres[i * inp.nqoi + j] = 0.0; // dummy
+				}
+			}
+		}
+
+		MPI_Allgather(tmpres, inp.nqoi* chunkSize, MPI_DOUBLE, rbuf, inp.nqoi* chunkSize, MPI_DOUBLE, MPI_COMM_WORLD);
+
+
+		// save the final results
+
+		vector<vector<double>> gvals(inp.nmc, std::vector<double>(inp.nqoi, 0));
+		for (int i = 0; i < inp.nmc; i++) {
+			for (int j = 0; j < inp.nqoi; j++) {
+				gvals[i][j] = rbuf[i * inp.nqoi + j];
+			}
+		}
+
+
+	#else
+    std::cout<<"simulateAppBatch is running OpenMP" <<std::endl;
+
 	//
-	//std::cout <<"Testing here 1 \n";
-	int chunkSize = std::ceil(double(inp.nmc) / double(nproc));
-	//int lastChunk = inp.nmc - chunkSize * (nproc-1);
-	double* rbuf;
-	rbuf = (double*)malloc(inp.nqoi * chunkSize * nproc * sizeof(double));
-	double* tmpres = (double*)malloc(inp.nqoi * chunkSize * sizeof(double));
-	//std::cout <<"Testing here 2 \n";
-	
-	MPI_Barrier( MPI_COMM_WORLD); // To make sure tempdir is clean.
-	for (int i = 0; i < chunkSize; i ++)
-	{
-		int id = chunkSize * procno + i;
-
-		//std::cerr << "FEM simulation running in parallel: procno =" + std::to_string(procno) + " for id=" +std::to_string(id) + "\n";;
-		if (id < inp.nmc) {
-			vector<double> res = simulateAppOnce(id, inp.workDir, copyDir, inp.nrv + inp.nco + inp.nre, inp.nqoi, inp.rvNames, x[id], workflowDriver, osType, runType);
-
-			for (int j = 0; j < inp.nqoi; j++) {
-				tmpres[i * inp.nqoi + j] = res[j];
-			}
+	// OpenMP
+	//
+		vector<vector<double>> gvals(inp.nmc, std::vector<double>(inp.nqoi, 0));
+		int i;
+		#pragma omp parallel for shared(gvals) private(i)
+		for (i = 0; i < inp.nmc; i++)
+		{
+			gvals[i] = simulateAppOnce(i, inp.workDir, copyDir, inp.nrv + inp.nco + inp.nre, inp.nqoi, inp.rvNames, x[i], workflowDriver, osType, runType);
 		}
-		else {
-			for (int j = 0; j < inp.nqoi; j++) {
-				tmpres[i * inp.nqoi + j] = 0.0; // dummy
-			}
-		}
-	}
 
-	MPI_Allgather(tmpres, inp.nqoi* chunkSize, MPI_DOUBLE, rbuf, inp.nqoi* chunkSize, MPI_DOUBLE, MPI_COMM_WORLD);
-	
-	// save the final results
-
-	vector<vector<double>> gvals(inp.nmc, std::vector<double>(inp.nqoi, 0));
-	for (int i = 0; i < inp.nmc; i++) {
-		for (int j = 0; j < inp.nqoi; j++) {
-			gvals[i][j] = rbuf[i * inp.nqoi + j ];
-		}
-	}
+	#endif
 
 	X = x;
 	G = gvals;
@@ -613,12 +632,12 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 {
 
 	//
-	// (1) create "workdir.i " folder :need C++17 to use the files system namespace 
+	// (1) create "workdir.i " folder :need C++17 to use the files system namespace
 	//
 
 	string workDir = workingDirs + "/workdir." + std::to_string(i + 1);
 
-	//std::cerr << "workDir:" + workDir + "\n";
+	std::cerr << "workDir:" + workDir + "\n";
 
 	//
 	// (2) copy files from templatedir to workdir.i
@@ -628,9 +647,9 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 		std::filesystem::copy_options::update_existing
 		| std::filesystem::copy_options::recursive;
 
-	
+
 	//const auto copyOptions = std::filesystem::copy_options::overwrite_existing;
-	
+
 
 	try
 	{
@@ -638,7 +657,7 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 	}
 	catch (std::exception & e)
 	{
-		std::cout << e.what() << "\n";		
+		std::cout << e.what() << "\n";
 		std::string errMSG = "* Please clean up your working directory.*\n";
 		theErrorFile.write(errMSG);
 	}
@@ -701,7 +720,7 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 		readFile.close();
 
 		if (j == 0) {
-			std::string errMsg = "Error running FEM: results.out file at workdir." + std::to_string(i + 1) + " is empty.";			
+			std::string errMsg = "Error running FEM: results.out file at workdir." + std::to_string(i + 1) + " is empty.";
 			theErrorFile.write(errMsg);
 		}
 		if (j != nqoi) {
@@ -757,9 +776,9 @@ void ERANataf::simulateAppSequential(string osType, string runType, jsonInput in
 
 	//std::cerr << "workdir:" + inp.workDir + "\n";
 	std::cerr << "copyDir:" + copyDir + "\n";
-	
+
 	//
-	// (1) create "workdir.idx " folder :need C++17 to use the files system namespace 
+	// (1) create "workdir.idx " folder :need C++17 to use the files system namespace
 	//
 
 	string workDir = inp.workDir + "/workdir." + std::to_string(idx + 1);
@@ -789,11 +808,11 @@ void ERANataf::simulateAppSequential(string osType, string runType, jsonInput in
 
 	std::filesystem::current_path(workDir);
 
-	
+
 	//if (ok != true) {
 	//	std::cerr << "my_nataf - could not copy files to " << workDir << "\n";
 	//}
-	
+
 
 	//
 	// (3) write param.in file
@@ -809,7 +828,7 @@ void ERANataf::simulateAppSequential(string osType, string runType, jsonInput in
 		}
 		writeFile.close();
 	}
-	
+
 	//
 	// (4) run workflow_driver.bat(e.g. It will make "SimCenterInput.tcl" and run OpenSees)
 	//
@@ -896,7 +915,7 @@ void ERANataf::sample(jsonInput inp, int procno) {
 		}
 	}
 
-	// save as 
+	// save as
 	U = uvals;
 	resampID = resampIDvals;
 }
