@@ -57,7 +57,7 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 #include "writeErrors.h"
 
-#ifdef MPI
+#ifdef MPI_RUN
 	#include <mpi.h>
 #endif
 
@@ -68,7 +68,7 @@ int main(int argc, char** argv)
 
 
 	int nprocs, procno;
-	#ifdef MPI
+	#ifdef MPI_RUN
 		MPI_Comm comm;
 		MPI_Init(&argc, &argv);
 		comm = MPI_COMM_WORLD;
@@ -176,10 +176,10 @@ int main(int argc, char** argv)
 	theErrorFile.close();
 	if (procno == 0) std::cout << "Elapsed time: " << elapsedTime << " s\n";
 
-	#ifdef MPI
+	#ifdef MPI_RUN
 		MPI_Finalize();
 		theErrorFile.print("MPI done");
-	#elif
+	#else
 		theErrorFile.print("OpenMP done");
 	#endif
 	return 0;

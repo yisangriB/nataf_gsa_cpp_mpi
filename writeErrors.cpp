@@ -85,7 +85,7 @@ void writeErrors::close() {
 }
 
 void writeErrors::abort() {
-#ifdef MPI
+#ifdef MPI_RUN
 	MPI_Abort(MPI_COMM_WORLD, -1);
 #else
 	exit(-1);

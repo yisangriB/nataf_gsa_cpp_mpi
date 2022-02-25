@@ -49,7 +49,7 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <iostream>
 #include <fstream>
 
-#ifdef MPI
+#ifdef MPI_RUN
 	#include <mpi.h>
 #endif
 

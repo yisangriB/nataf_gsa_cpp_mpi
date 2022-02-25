@@ -67,7 +67,7 @@ runGSA::runGSA(vector<vector<double>> xval,
 
 	//std::cout<<"Just testing this location 2\n";
 
-	#ifdef MPI
+	#ifdef MPI_RUN
         std::cout<<"sensitivity running MPI " << std::endl;
 
 		//

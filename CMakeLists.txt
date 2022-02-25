@@ -2,16 +2,24 @@ cmake_minimum_required(VERSION 3.10)
 
 project(nataf_gsa_project)
 
-#if(LINUX) 
-	set ( PARALLEL_LIB "MPI")
-#else()
-#	set ( PARALLEL_LIB "OPENMP")
-#endif()
+if(UNIX)
+	if(NOT APPLE)
+		set(LINUX TRUE)
+	endif()
+endif()
+
+
+if(LINUX)
+	set(LINUX TRUE)
+	set ( PARALLEL_LIB "MPI_RUN")
+else()
+	set ( PARALLEL_LIB "OPENMP_RUN")
+endif()
 
 
 # sy- add mpi
 # Find the package
-if(PARALLEL_LIB STREQUAL  "MPI") 
+if(PARALLEL_LIB STREQUAL  "MPI_RUN")
 	find_package(MPI REQUIRED)
 else()
 	find_package(OpenMP REQUIRED) # Find the package
@@ -59,7 +67,7 @@ set(SOURCES main.cpp
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/lib_armadillo/armadillo-10.1.0/include)
 
-if(PARALLEL_LIB STREQUAL  "MPI") 
+if(PARALLEL_LIB STREQUAL  "MPI_RUN")
 	include_directories(${MPI_INCLUDE_PATH})
 	add_executable(nataf_gsa ${SOURCES})
 	target_link_libraries(nataf_gsa
@@ -70,7 +78,7 @@ if(PARALLEL_LIB STREQUAL  "MPI")
 		CONAN_PKG::mkl-static
 		${MPI_LIBRARIES}
 		)
-		add_compile_definitions(MPI)
+		add_compile_definitions(MPI_RUN)
 
 else()
 	add_executable(nataf_gsa ${SOURCES})
@@ -81,7 +89,7 @@ else()
 		CONAN_PKG::eigen
 		CONAN_PKG::mkl-static
 		OpenMP::OpenMP_CXX)
-	add_compile_definitions(OPENMP)
+	add_compile_definitions(OPENMP_RUN)
 endif() 
 
 install(TARGETS nataf_gsa DESTINATION bin)

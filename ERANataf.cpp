@@ -60,7 +60,7 @@ ERANataf::ERANataf() {}
 ERANataf::ERANataf(jsonInput inp, int procno)
 {
 
-#ifdef MPI
+#ifdef MPI_RUN
     std::cout << "Nataf is running MPI" <<std::endl;
 #else
     std::cout << "Nataf is running OpenMP" <<std::endl;
@@ -561,7 +561,7 @@ void ERANataf::simulateAppBatch(string workflowDriver,
 
 
 
-	#ifdef MPI
+	#ifdef MPI_RUN
         std::cout<<"simulateAppBatch is running MPI" <<std::endl;
 		//
 		// MPI
