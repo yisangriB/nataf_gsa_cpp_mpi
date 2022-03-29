@@ -1,6 +1,6 @@
 CC=mpicc
 CXX=mpicxx
-#-Dxxx=MPI_RUN
+-Dxxx=MPI_RUN
 CFLAGS=-mkl -stdc++17 -I. -I./nlopt/include -I/home1/apps/intel19/eigen/3.3.7/include/eigen3 -I./lib_armadillo/armadillo-10.1.0/include
 
 LINK_LIBS=-L./nlopt/lib -lnlopt -lstdc++fs

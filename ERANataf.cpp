@@ -705,7 +705,17 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 
 	if (!readFile.is_open()) {
 		//*ERROR*
-		std::string errMsg = "Error running FEM: results.out missing in workdir." + std::to_string(i + 1) + ". Check your FEM inputs.";
+		std::string errMsg = "Error running FEM: results.out missing in workdir." + std::to_string(i + 1) + ".";
+		
+		// check of ops.out is created
+		string messageFromFEM = workDir + "/ops.out";
+		std::ifstream femFile(messageFromFEM.data());
+		if (femFile.is_open()) {
+			std::string msg((std::istreambuf_iterator<char>(femFile)),
+				std::istreambuf_iterator<char>());
+			errMsg += "\n *** Message from the FEM engine in workdir." + std::to_string(i + 1) + " says \n \"";
+			errMsg += msg + "\"";
+		}
 		theErrorFile.write(errMsg);
 	}
 

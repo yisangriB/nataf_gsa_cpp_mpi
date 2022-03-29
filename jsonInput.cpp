@@ -100,6 +100,7 @@ jsonInput::jsonInput(string workDir, string inpFile, int procno)
 	} else {
 		resampGroupTxt = "";
 	}
+	std::cout << resampGroupTxt << std::endl;
 	vector<vector<string>> resamplingGroupsString;
 	vector<string> flattenResamplingGroups;
 
@@ -402,7 +403,7 @@ jsonInput::jsonInput(string workDir, string inpFile, int procno)
 		// if key "correlationMatrix" exists
 		for (int i = 0; i < nrv; i++) {
 			for (int j = 0; j < nrv; j++) {
-				corr[i][j] = UQjson["correlationMatrix"][randIdx[i] + randIdx[j] * (nrv + nco)];
+				corr[i][j] = UQjson["correlationMatrix"][randIdx[i] + randIdx[j] * (nrv + nco + nre)];
 			}
 		}
 	}
@@ -429,14 +430,19 @@ jsonInput::jsonInput(string workDir, string inpFile, int procno)
 	// get group index matrix
 	//
 
-	if (UQjson["UQ_Method"].find("sensitivityGroups") != UQjson["UQ_Method"].end()) {
+	bool generate_default_RVsensitivityGroup = true;
+	if (UQjson["UQ_Method"].find("RVsensitivityGroup") != UQjson["UQ_Method"].end()) {
 		// if the key "sensitivityGroups" exists
-
-		std::string groupTxt = UQjson["UQ_Method"]["sensitivityGroups"];
-		groupTxt.erase(remove(groupTxt.begin(), groupTxt.end(), ' '), groupTxt.end()); // remove any white spaces
-		fromTextToId(groupTxt, rvNames, groups);
+		std::string groupTxt = UQjson["UQ_Method"]["RVsensitivityGroup"];
+		if (!groupTxt.empty()) {
+			// if value of "sensitivityGroups" is nonempty
+			groupTxt.erase(remove(groupTxt.begin(), groupTxt.end(), ' '), groupTxt.end()); // remove any white spaces
+			fromTextToId(groupTxt, rvNames, groups);
+			generate_default_RVsensitivityGroup = false;
+		}
+		
 	}
-	else {
+	if (generate_default_RVsensitivityGroup) {
 		for (int i = 0; i < nrv; i++) {
 			groups.push_back({i});
 		}
