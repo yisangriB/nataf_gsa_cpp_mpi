@@ -722,12 +722,28 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 	vector<double> g_tmp;
 	if (readFile.is_open()) {
 		int j = 0;
-		double g;
-		while (readFile >> g) {
-			g_tmp.push_back(g);
-			j++;
-		}
-		readFile.close();
+
+        string g_str;
+        while(readFile >> g_str)
+        {
+            if(g_str == "NaN")       //you could also add it with negative infinity
+            {
+                g_tmp.push_back(std::numeric_limits<double>::quiet_NaN());
+            }
+            else
+            {
+                g_tmp.push_back(atof(g_str.c_str()));
+            }
+            j++;
+        }
+
+        //readFile >> double_imanip();
+//		while (readFile >> g) {
+//			g_tmp.push_back(g);
+//			j++;
+//		}
+        //readFile >> double_imanip();
+        readFile.close();
 
 		if (j == 0) {
 			std::string errMsg = "Error running FEM: results.out file at workdir." + std::to_string(i + 1) + " is empty.";

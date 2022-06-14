@@ -134,3 +134,4 @@ typedef struct NatafStr {
 } my_NatafInfo;
 
 #endif // ERA_NATAF_H
+

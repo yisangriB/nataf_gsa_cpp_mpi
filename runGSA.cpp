@@ -201,6 +201,19 @@ runGSA::runGSA(vector<vector<double>> xval,
 
 vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
 {
+    //
+    // we will ignore NaN in gval
+    //
+
+    int nmc_new = 0;
+    for (int ns = 0; ns < nmc; ns++)
+    {
+        // Only if g is not NaN
+        if (!std::isnan(gval[ns])) {
+            nmc_new++;
+        }
+    }
+
 	vector<vector<int>> combs;
 
 	if (Opt == 'T')
@@ -258,7 +271,20 @@ vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
 			printf("GSA i=%i, Si=%.2f, K=%i \n", nc + 1, Si[nc], Kos);
 			continue;
 		}
-		mat data(endm + 1, nmc);
+
+		mat data(endm + 1, nmc_new);
+
+
+        int count_valid = 0;
+        for (int ns = 0; ns < nmc; ns++)
+        {
+            // Only if g is not NaN
+            if (!std::isnan(gval[ns])) {
+                data(endm, count_valid) = gval[ns];
+                count_valid++;
+            }
+        }
+        std::cout<<count_valid<<endl;
 
 		for (int ne = 0; ne < endm; ne++)
 		{
@@ -268,18 +294,17 @@ vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
 				std::string errMsg = "Error running UQ engine: combination index exceeds the bound";
 				theErrorFile.write(errMsg);
 			}
-
+            count_valid = 0;
 			for (int ns = 0; ns < nmc; ns++)
 			{
-				data(ne, ns) = xval[ns][idx];
+                // Only if g is not NaN
+                if (!std::isnan(gval[ns])) {
+                    data(ne, count_valid) = xval[ns][idx];
+                    count_valid++;
+                }
 			}
-		}
-
-
-		for (int ns = 0; ns < nmc; ns++)
-		{
-			data(endm, ns) = gval[ns];
-		}
+            std::cout<<count_valid<<endl;
+        }
 
 		gmm_full model;
 		//bool status = model.learn(data, Kos, maha_dist, static_subset, 30, 100, V *1.e-3, false);
@@ -290,11 +315,11 @@ vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
 		int Kthres;
 		if (Opt == 'T')
 		{
-			Kthres = nmc / 100; // total
+			Kthres = nmc_new / 100; // total
 		}
 		else
 		{
-			Kthres = nmc / 10;   // main
+			Kthres = nmc_new / 10;   // main
 		}
 
 		while (1) {
@@ -330,7 +355,7 @@ vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
 		rowvec mug = mu.row(endm);    //1 x Ko
 
 		vector<double> mui;
-		mui.reserve(nmc);
+		mui.reserve(nmc_new);
 		// Used to calculate conditional mean and covariance
 		cube SiginvSig(1, endm, Kos);
 		mat muk(endm, Kos);
@@ -345,7 +370,7 @@ vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
 		//model.means.print("means:");
 		//model.fcovs.print("fcovs:");
 
-		for (int i = 0; i < nmc; i++)
+		for (int i = 0; i < nmc_new; i++)
 		{
 			rowvec pik_tmp(Kos, fill::zeros);
 			colvec muki(Kos);
@@ -422,11 +447,15 @@ runGSA::~runGSA() {};
 double runGSA::calVar(vector<double> x) {
 	double m = calMean(x);
 	double accum = 0.0;
+    int count = 0;
 	std::for_each(std::begin(x), std::end(x), [&](const double d) {
-		accum += (d - m) * (d - m);
+            if (!std::isnan(d)) {
+		        accum += (d - m) * (d - m);
+                count++;
+            }
 		});
 	//std::cout << (accum / (x.size())) << std::endl;
-	return (accum / (x.size()));
+	return (accum / count);
 }
 
 void runGSA::writeTabOutputs(jsonInput inp, int procno)
