@@ -60,7 +60,6 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/lockfree/queue.hpp>
-#include <csv.h>
 
 #ifdef MPI_RUN
 	#include <mpi.h>
