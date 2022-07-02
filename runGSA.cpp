@@ -176,6 +176,7 @@ void runGSA::runMultipleGSA(vector<vector<double>> gmat_red, int Kos)
 
     //std::cout<<"Just testing this location 2\n";
 
+	/*
     #ifdef MPI_RUN
         std::cout<<"sensitivity running MPI " << std::endl;
 
@@ -261,7 +262,9 @@ void runGSA::runMultipleGSA(vector<vector<double>> gmat_red, int Kos)
                 Stmat.push_back(StVectmp);
                 Simat.push_back(SmVectmp);
             }
+
     #else
+	*/
 	/*
         std::cout<<"sensitivity running open MP " << std::endl;
         for (int j = 0; j < nqoi; j++) {
@@ -363,7 +366,7 @@ void runGSA::runMultipleGSA(vector<vector<double>> gmat_red, int Kos)
 	Simat = Simat_T;    // <--- reassign here
 	Stmat = Stmat_T;    // <--- reassign here
 	*/
-	#endif
+	//#endif
 
 }
 
