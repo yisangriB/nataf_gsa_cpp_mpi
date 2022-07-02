@@ -503,7 +503,7 @@ jsonInput::jsonInput(string workDir, string inpFile, int procno)
 		}
 	}
 
-	if (performPCA) {
+	if (performPCA && (uqType.compare("Sensitivity Analysis") == 0)) {
 		PCAvarRatioThres = UQjson["UQ_Method"]["PCAvarianceRatio"];
 		if (PCAvarRatioThres <= 0) {
 			std::string errMsg = "Error reading input: PCA variance ratio should be greater than zero.";
