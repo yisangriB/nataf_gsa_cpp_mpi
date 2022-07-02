@@ -71,6 +71,8 @@ public:
 	runGSA(vector<vector<double>> xval,
 			vector<vector<double>> gval,
 			vector<vector<int>> combs_tmp,
+			double PCAvarRatio,
+			vector<vector<int>> qoiVectRange,
 			int Kos,
 			int procno,
 			int nprocs);
@@ -82,22 +84,42 @@ public:
 	//vector<double> Si;
 
 	vector<vector<double>> xval;
-	vector<vector<double>> gval;
+	vector<vector<double>> gmat;
 	vector<vector<int>> combs_tmp;
 	char Opt;
 	//int Kos;
 	vector<vector<double>> Simat;
 	vector<vector<double>> Stmat;
+	vector<vector<double>> Simatagg;
+	vector<vector<double>> Stmatagg;
 
 private:
 	double mvnPdf(mat x, mat mu, mat cov);
 	double calMean(vector<double> x);
 	double calVar(vector<double> x);
+	double calCov(vector<double> x1, vector<double> x2);
 	const double PI = 3.1415926535897932384626433;
-	vector<double> doGSA(vector<double> gval, int Kos, char Opt);
-	int nrv;
+    void runPCA(vector<vector<double>> gmat, vector<vector<double>>& gmat_red, mat &princ_dir_red);
+	void runSingleCombGSA(vector<vector<double>> gvec, int Ko, vector<int> combs, vector<double>& Si, char Opt);
+	void runSingleGSA(vector<double> gvec, int Kos, char Opt, vector<double>& Si, vector<vector<double>>& Ei);
+    void runMultipleGSA(vector<vector<double> > gmat, int Kos);
+	void preprocess_gmat(vector<vector<double>> gmat, vector<vector<double>>& gmat_eff);
+
+    int nrv;
+	int nqoi;
+	int nqoi_eff;
 	int ncombs;
 	int nmc;
+	mat princ_dir_red;
+	vec lambs_red;
+	vector<double>constantQoiIdx;
+	vector<double>varQoI;
+	//PCA variables
+	bool performPCA;
+	int npc;
+	double PCAvarRatioThres;
+	double PCAvarRatio;
+
 };
 
 #endif //RUN_GSA_H

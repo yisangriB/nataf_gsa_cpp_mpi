@@ -562,7 +562,9 @@ void ERANataf::simulateAppBatch(string workflowDriver,
 
 
 	#ifdef MPI_RUN
-        std::cout<<"simulateAppBatch is running MPI" <<std::endl;
+
+		std::cout << "==================== running FEM simulations (MPI) ================" << std::endl;
+		std::cout << std::endl;
 		//
 		// MPI
 		//
@@ -609,7 +611,8 @@ void ERANataf::simulateAppBatch(string workflowDriver,
 
 
 	#else
-    std::cout<<"simulateAppBatch is running OpenMP" <<std::endl;
+    std::cout << "==================== running FEM simulations (OpenMP) ================" <<std::endl;
+	std::cout << std::endl;
 
 	//
 	// OpenMP
@@ -637,7 +640,7 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 
 	string workDir = workingDirs + "/workdir." + std::to_string(i + 1);
 
-	std::cerr << "workDir:" + workDir + "\n";
+	//std::cerr << "workDir:" + workDir + "\n";
 
 	//
 	// (2) copy files from templatedir to workdir.i
@@ -658,8 +661,22 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 	catch (std::exception & e)
 	{
 		std::cout << e.what() << "\n";
-		std::string errMSG = "* Please clean up your working directory.*\n";
-		theErrorFile.write(errMSG);
+		try
+		{
+			// try removing files
+			for (const auto& entry : std::filesystem::directory_iterator(workingDirs))
+			{
+				if (entry.path().u8string().find("workdir") != std::string::npos) {
+					std::filesystem::remove_all(entry.path());
+				}
+			}
+		}
+		catch (std::exception & e)
+		{
+			std::cout << e.what() << "\n";
+			std::string errMSG = "* Please clean up your working directory.*\n";
+			theErrorFile.write(errMSG);
+		}
 	}
 
 

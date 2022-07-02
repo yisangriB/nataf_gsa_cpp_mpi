@@ -79,6 +79,7 @@ public:
 	int nqoi;
 	int rseed;
 	int ngr;
+	int nqoiVects;
 	string UQmethod;
 	vector<string> distNames;
 	vector<vector<double>> vals;
@@ -87,11 +88,15 @@ public:
 	vector<string> opts;
 	vector<string> rvNames;
 	vector<string> qoiNames;
+	vector<string> qoiVectNames;
+	vector<vector<int>> qoiVectRange;
 	vector<vector<double>> corr;
 	vector<vector<double>> adds;
 	vector<vector<int>> groups;
 	vector<vector<int>> resamplingGroups;
 	vector<int> resamplingSize;
+	bool performPCA;
+	double PCAvarRatioThres;
 
 private:
 	void getPnames(string distname, string optname, vector<std::string>& par_char);

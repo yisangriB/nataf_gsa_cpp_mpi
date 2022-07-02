@@ -57,6 +57,11 @@ UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 #include "writeErrors.h"
 
+#include <boost/iostreams/device/mapped_file.hpp>
+#include <boost/thread/thread.hpp>
+#include <boost/lockfree/queue.hpp>
+#include <csv.h>
+
 #ifdef MPI_RUN
 	#include <mpi.h>
 #endif
@@ -65,8 +70,6 @@ writeErrors theErrorFile; // Error log
 
 int main(int argc, char** argv)
 {
-
-
 	int nprocs, procno;
 	#ifdef MPI_RUN
 		MPI_Comm comm;
@@ -157,7 +160,7 @@ int main(int argc, char** argv)
 		runForward ForwardResults(T.X, T.G, procno);
 		ForwardResults.writeTabOutputs(inp, procno); 	//	Write dakotaTab.out
 
-		runGSA GsaResults(T.X, T.G, inp.groups, 1, procno, nprocs); // int Kos = 25;
+		runGSA GsaResults(T.X, T.G, inp.groups, inp.PCAvarRatioThres, inp.qoiVectRange, 1, procno, nprocs); // int Kos = 25;
 
 		//elapsedTime = (std::chrono::high_resolution_clock::now() - elapseStart).count();
 		elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - elapseStart).count()/1.e3;

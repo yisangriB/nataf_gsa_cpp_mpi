@@ -50,166 +50,593 @@ runGSA::runGSA() {}
 runGSA::runGSA(vector<vector<double>> xval,
 	vector<vector<double>> gmat,
 	vector<vector<int>> combs_tmp,
+	double PCAvarRatioThres,
+	vector<vector<int>> qoiVectRange,
 	int Kos,
 	int procno,
 	int nprocs)
 {
 	this->xval = xval;
-	this->gval = gmat;
+	this->gmat = gmat;
 	this->combs_tmp = combs_tmp;
+	this->PCAvarRatioThres = PCAvarRatioThres;
+
+	if (PCAvarRatioThres ==0.0) {
+		this->performPCA = false;
+	} else {
+		this->performPCA = true;
+	}
+	
 	nmc = xval.size();
 
 	nrv = xval[0].size();
+	nqoi = gmat[0].size();
 	ncombs = combs_tmp.size();
-	int nqoi = gmat[0].size();
-	int Kos_base_main = std::min(Kos, int(ceil(nmc / 20.0)));
-	int Kos_base_total = std::min(Kos, int(ceil(nmc / 20.0)));
 
-	//std::cout<<"Just testing this location 2\n";
+	vector<vector<double>> gmat_eff = gmat;
+    vector<vector<double>> gmat_red;
 
-	#ifdef MPI_RUN
-        std::cout<<"sensitivity running MPI " << std::endl;
+	//
+	// Preprocess gmat find a constant column
+	//
 
-		//
-		// MPI
-		//
+	preprocess_gmat(gmat, gmat_eff);
 
-		int chunkSize = std::ceil(double(nqoi) / double(nprocs));
-		//int lastChunk = inp.nmc - chunkSize * (nproc-1);
-		double* SmAll = (double*)malloc(ncombs * chunkSize * nprocs * sizeof(double));
-		double* SmTmp = (double*)malloc(ncombs * chunkSize * sizeof(double));
-		double* StAll = (double*)malloc(ncombs * chunkSize * nprocs * sizeof(double));
-		double* StTmp = (double*)malloc(ncombs * chunkSize * sizeof(double));
-		// for each QoI
-		//std::cout<<"Just testing this location 3 \n";
-		for (int nq = 0; nq < chunkSize ; nq++) {
-			int id = chunkSize * procno + nq;
-			if (id >= nqoi) { // dummy
-				for (int i = 0; i < ncombs; i++) {
-					StTmp[nq * ncombs + i] = 0.;
-					SmTmp[nq * ncombs + i] = 0.;
+	//
+	// PCA process
+	//
+	//mat princ_dir_red;
+    if (performPCA) {
+        runPCA(gmat_eff, gmat_red, princ_dir_red);
+    } else {
+        //copy
+        //for (int i = 0; i < gmat_eff.size(); i++) {
+        //    gmat_red.push_back(gmat_eff[i]);
+        //}
+		gmat_red = gmat_eff;
+		princ_dir_red.eye(nqoi, nqoi);
+    }
+
+    runMultipleGSA(gmat_red, Kos);
+
+	//
+	// Post processing
+	//
+	if (qoiVectRange.size()!=0){
+		for (int nc = 0; nc < ncombs; nc++) {
+			vector<double> Siagg_tmp, Stagg_tmp;
+
+			double sum = 0;
+			int startIdx = qoiVectRange[0][0];
+			int endIdx = qoiVectRange[0][1];
+			int uniqueCount;
+
+			for (int nu = 0; nu < qoiVectRange.size(); nu++) {
+				double numerSi = 0, numerSt = 0, denom = 0;
+				for (int nq = qoiVectRange[0][0]; nq < qoiVectRange[0][1]; nq++)
+				{
+					if (std::find(constantQoiIdx.begin(), constantQoiIdx.end(), nq) != constantQoiIdx.end())
+						continue;
+					numerSi += varQoI[nq] * Simat[nc][nq];
+					numerSt += varQoI[nq] * Stmat[nc][nq];
+					denom += varQoI[nq];
 				}
-				continue;
+				if (denom == 0) denom = 1.0; // for numerical stability. Si is anyways zero
+				Siagg_tmp.push_back(numerSi / denom);
+				Stagg_tmp.push_back(numerSt / denom);
 			}
-
-			vector<double> gvec;
-			double sqDiff = 0;
-			gvec.reserve(nmc);
-			for (int i = 0; i < nmc; i++) {
-				gvec.push_back(gmat[i][id]);
-			}
-
-			// check if the variance is zero
-			double mean = 0;
-			for (int i = 0; i < nmc; i++)
-				mean += gvec[i];
-
-			mean = mean / double(nmc);
-			for (int i = 0; i < nmc; i++)
-				sqDiff += (gmat[i][id] - mean) * (gmat[i][id] - mean);
-
-			//double var = sqDiff / nmc;
-			if (sqDiff < 1.e-10) {
-				//theErrorFile << "Error running FEM: the variance of output is zero. Output value is " << mean;
-				//theErrorFile.close();
-				//exit(1);
-				//vector<double> zeros(ncombs, 0.0);
-				//Simat.push_back(zeros);
-				//Stmat.push_back(zeros);
-				//continue;
-				for (int i = 0; i < ncombs; i++) {
-					StTmp[nq * ncombs + i] = 0.;
-					SmTmp[nq * ncombs + i] = 0.;
-				}
-				continue;
-			};
-
-			vector<double> Sij, Stj;
-
-			Sij = doGSA(gvec, Kos_base_main, 'M');
-			Stj = doGSA(gvec, Kos_base_total, 'T');
-
-			if (Stj < Sij) {
-				Stj = Sij;
-			}
-
-			for (int i = 0; i < ncombs; i++) {
-				SmTmp[nq * ncombs + i] = Sij[i];
-				StTmp[nq * ncombs + i] = Stj[i];
-			}
-			//Simat.push_back(Stj);
-			//Stmat.push_back(Sij);
+			Simatagg.push_back(Siagg_tmp);
+			Stmatagg.push_back(Siagg_tmp);
 		}
-		MPI_Allgather(StTmp, ncombs * chunkSize, MPI_DOUBLE, StAll, ncombs * chunkSize, MPI_DOUBLE, MPI_COMM_WORLD);
-		MPI_Allgather(SmTmp, ncombs * chunkSize, MPI_DOUBLE, SmAll, ncombs * chunkSize, MPI_DOUBLE, MPI_COMM_WORLD);
-		for (int i = 0; i < nqoi; i++) {
-			vector<double> StVectmp(ncombs,0), SmVectmp(ncombs, 0);
-			for (int j = 0; j < ncombs; j++) {
-				StVectmp[j] = StAll[i * ncombs + j];
-				SmVectmp[j] = SmAll[i * ncombs + j];
-			}
-			Stmat.push_back(StVectmp);
-			Simat.push_back(SmVectmp);
-		}
-	#else
-
-    std::cout<<"sensitivity running open MP " << std::endl;
-		for (int j = 0; j < nqoi; j++) {
-
-			vector<double> gvec;
-			double sqDiff = 0;
-			gvec.reserve(nmc);
-			for (int i = 0; i < nmc; i++) {
-				gvec.push_back(gmat[i][j]);
-			}
-
-			// check if the variance is zero
-			double mean = 0;
-			for (int i = 0; i < nmc; i++)
-				mean += gvec[i];
-
-			mean = mean / double(nmc);
-			for (int i = 0; i < nmc; i++)
-				sqDiff += (gmat[i][j] - mean) * (gmat[i][j] - mean);
-
-			//double var = sqDiff / nmc;
-			if (sqDiff < 1.e-10) {
-				vector<double> zeros(ncombs, 0.0);
-				Simat.push_back(zeros);
-				Stmat.push_back(zeros);
-				continue;
-			};
-
-			vector<double> Sij, Stj;
-
-			Sij = doGSA(gvec, Kos, 'M');
-			Stj = doGSA(gvec, Kos, 'T');
-
-			vector<double> Si_temp, Kos, St_temp;
-
-			for (int nc = 0; nc < ncombs; nc++) {
-				if (Stj[nc] < Sij[nc]) {
-					Stj[nc] = Sij[nc];
-				}
-			}
-			Simat.push_back(Sij);
-			Stmat.push_back(Stj);
-		}
-
-	#endif
+	}
 }
 
-vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
+void runGSA::preprocess_gmat(vector<vector<double>> gmat, vector<vector<double>>& gmat_eff)
+{
+	// Make the matrix centered...
+	int count = 0;
+	for (int nq = nqoi-1; nq >= 0; nq--) {
+		vector<double> gvec;
+		gvec.reserve(nmc);
+		for (int i = 0; i < nmc; i++) {
+			gvec.push_back(gmat[i][nq]);
+		}
+
+		double mean = 0;
+		double sqDiff = 0;
+
+		for (int i = 0; i < nmc; i++)
+			mean += gvec[i];
+
+		mean = mean / double(nmc);
+		for (int i = 0; i < nmc; i++)
+			sqDiff += (gmat[i][nq] - mean) * (gmat[i][nq] - mean);
+
+		//double var = sqDiff / nmc;
+		if (sqDiff < 1.e-10) {
+			constantQoiIdx.push_back(nq);
+			// remove the column 
+			for (auto& row : gmat_eff) row.erase(next(row.begin(), nq));
+		}
+		else {
+			for (auto& row : gmat_eff) row[nq] = row[nq]- mean;
+			count++;
+		}
+	}
+	nqoi_eff = count;
+
+}
+
+void runGSA::runMultipleGSA(vector<vector<double>> gmat_red, int Kos)
+{
+    int nqoi_red = gmat_red[0].size();
+
+    int Kos_base_main = std::min(Kos, int(ceil(nmc / 20.0)));
+    int Kos_base_total = std::min(Kos, int(ceil(nmc / 20.0)));
+
+    //std::cout<<"Just testing this location 2\n";
+
+    #ifdef MPI_RUN
+        std::cout<<"sensitivity running MPI " << std::endl;
+
+            //
+            // MPI
+            //
+
+            int chunkSize = std::ceil(double(nqoi) / double(nprocs));
+            //int lastChunk = inp.nmc - chunkSize * (nproc-1);
+            double* SmAll = (double*)malloc(ncombs * chunkSize * nprocs * sizeof(double));
+            double* SmTmp = (double*)malloc(ncombs * chunkSize * sizeof(double));
+            double* StAll = (double*)malloc(ncombs * chunkSize * nprocs * sizeof(double));
+            double* StTmp = (double*)malloc(ncombs * chunkSize * sizeof(double));
+            // for each QoI
+            //std::cout<<"Just testing this location 3 \n";
+            for (int nq = 0; nq < chunkSize ; nq++) {
+                int id = chunkSize * procno + nq;
+                if (id >= nqoi) { // dummy
+                    for (int i = 0; i < ncombs; i++) {
+                        StTmp[nq * ncombs + i] = 0.;
+                        SmTmp[nq * ncombs + i] = 0.;
+                    }
+                    continue;
+                }
+
+                vector<double> gvec;
+                double sqDiff = 0;
+                gvec.reserve(nmc);
+                for (int i = 0; i < nmc; i++) {
+                    gvec.push_back(gmat_red[i][id]);
+                }
+
+                // check if the variance is zero
+                double mean = 0;
+                for (int i = 0; i < nmc; i++)
+                    mean += gvec[i];
+
+                mean = mean / double(nmc);
+                for (int i = 0; i < nmc; i++)
+                    sqDiff += (gmat_red[i][id] - mean) * (gmat_red[i][id] - mean);
+
+                //double var = sqDiff / nmc;
+                if (sqDiff < 1.e-10) {
+                    //theErrorFile << "Error running FEM: the variance of output is zero. Output value is " << mean;
+                    //theErrorFile.close();
+                    //exit(1);
+                    //vector<double> zeros(ncombs, 0.0);
+                    //Simat.push_back(zeros);
+                    //Stmat.push_back(zeros);
+                    //continue;
+                    for (int i = 0; i < ncombs; i++) {
+                        StTmp[nq * ncombs + i] = 0.;
+                        SmTmp[nq * ncombs + i] = 0.;
+                    }
+                    continue;
+                };
+
+				vector<double> Sij, Stj;
+				vector<vector<double>> Eij, Etj;
+
+                runSingleGSA(gvec, Kos_base_main, 'M', Sij, Eij);
+                runSingleGSA(gvec, Kos_base_total, 'T', Stj, Etj);
+
+                if (Stj < Sij) {
+                    Stj = Sij;
+                }
+
+                for (int i = 0; i < ncombs; i++) {
+                    SmTmp[nq * ncombs + i] = Sij[i];
+                    StTmp[nq * ncombs + i] = Stj[i];
+                }
+                //Simat.push_back(Stj);
+                //Stmat.push_back(Sij);
+            }
+            MPI_Allgather(StTmp, ncombs * chunkSize, MPI_DOUBLE, StAll, ncombs * chunkSize, MPI_DOUBLE, MPI_COMM_WORLD);
+            MPI_Allgather(SmTmp, ncombs * chunkSize, MPI_DOUBLE, SmAll, ncombs * chunkSize, MPI_DOUBLE, MPI_COMM_WORLD);
+            for (int i = 0; i < nqoi; i++) {
+                vector<double> StVectmp(ncombs,0), SmVectmp(ncombs, 0);
+                for (int j = 0; j < ncombs; j++) {
+                    StVectmp[j] = StAll[i * ncombs + j];
+                    SmVectmp[j] = SmAll[i * ncombs + j];
+                }
+                Stmat.push_back(StVectmp);
+                Simat.push_back(SmVectmp);
+            }
+    #else
+	/*
+        std::cout<<"sensitivity running open MP " << std::endl;
+        for (int j = 0; j < nqoi; j++) {
+
+            vector<double> gvec;
+            double sqDiff = 0;
+            gvec.reserve(nmc);
+            for (int i = 0; i < nmc; i++) {
+                gvec.push_back(gmat_red[i][j]);
+            }
+
+            // check if the variance is zero
+            double mean = 0;
+            for (int i = 0; i < nmc; i++)
+                mean += gvec[i];
+
+            mean = mean / double(nmc);
+            for (int i = 0; i < nmc; i++)
+                sqDiff += (gmat_red[i][j] - mean) * (gmat_red[i][j] - mean);
+
+            //double var = sqDiff / nmc;
+            if (sqDiff < 1.e-10) {
+                vector<double> zeros(ncombs, 0.0);
+                Simat.push_back(zeros);
+                Stmat.push_back(zeros);
+                continue;
+            };
+
+            vector<double> Sij, Stj;
+			vector<vector<double>> Eij, Etj;
+
+            runSingleGSA(gvec, Kos, 'M', Sij, Eij);
+            runSingleGSA(gvec, Kos, 'T', Stj, Etj);
+
+            vector<double> Si_temp, Kos, St_temp;
+
+            for (int nc = 0; nc < ncombs; nc++) {
+                if (Stj[nc] < Sij[nc]) {
+                    Stj[nc] = Sij[nc];
+                }
+            }
+            Simat.push_back(Sij);
+            Stmat.push_back(Stj);
+        }
+	*/
+	//std::cout << "sensitivity running open MP " << std::endl;
+
+	vector<vector<int>> combsM;
+	combsM = combs_tmp;
+
+	for (int nc = 0; nc < combsM.size(); nc++) {
+
+		// check if the variance is zero
+		std::cout << "RV (combinations) " + std::to_string(nc + 1) + " among " + std::to_string(combsM.size()) << std::endl;
+		vector<double> Sij, Stj;
+		std::cout << ">> For main :" << std::endl;
+		runSingleCombGSA(gmat_red, Kos, combsM[nc], Sij, 'M');
+
+		std::cout << ">> For total :" << std::endl;
+		runSingleCombGSA(gmat_red, Kos, combsM[nc], Stj, 'T');
+
+		vector<double> Si_temp, Kos, St_temp;
+
+		for (int nq = 0; nq < nqoi_eff; nq++) {
+			if (Stj[nq] < Sij[nq]) {
+				Stj[nq] = Sij[nq];
+			}
+		}
+		Simat.push_back(Sij);
+		Stmat.push_back(Stj);
+	}
+
+	//vector<vector<double> > Simat_T(Simat[0].size(), vector<double>());
+	//vector<vector<double> > Stmat_T(Simat[0].size(), vector<double>());
+
+	//
+	// Postprocess
+	//
+	for (int nq = 0; nq < nqoi; nq++)
+	{
+		if (std::find(constantQoiIdx.begin(), constantQoiIdx.end(), nq) != constantQoiIdx.end()) {
+			for (int nc = 0; nc < Simat.size(); nc++)
+			{
+				Simat[nc].insert(Simat[nc].begin() + nq, 0.0);
+				Stmat[nc].insert(Stmat[nc].begin() + nq, 0.0);
+			}
+		}
+	}
+
+	/*
+	for (int nc = 0; nc < Simat.size(); nc++)
+	{
+		for (int nq = 0; nq < Simat[nc].size(); nq++)
+		{
+			Simat_T[nq].push_back(Simat[nc][nq]);
+			Stmat_T[nq].push_back(Stmat[nc][nq]);
+		}
+	}
+	Simat = Simat_T;    // <--- reassign here
+	Stmat = Stmat_T;    // <--- reassign here
+	*/
+	#endif
+
+}
+
+void runGSA::runSingleCombGSA(vector<vector<double>> gmat, int Ko, vector<int> comb, vector<double>& Si, char Opt)
+{
+	//
+	// we will ignore NaN in gvec
+	//
+
+	if (Opt == 'T') {
+		vector<int> allSet(nrv);
+		std::iota(allSet.begin(), allSet.end(), 0);
+		vector<int> comb_new;
+		std::set_difference(allSet.begin(), allSet.end(), comb.begin(), comb.end(), std::inserter(comb_new, comb_new.begin()));
+		comb = comb_new;
+	}
+
+	int nqoi_red = gmat[0].size();
+
+	//vector<double> Si;
+	vector<vector<double>> Ei;
+	vector<double> Si_tmp;
+	Si.reserve(nqoi_eff);
+
+	for (int nq = 0; nq < nqoi_red; nq++) {
+		vector<double> gvec;
+		gvec.reserve(nmc);
+		for (int i = 0; i < nmc; i++) {
+			gvec.push_back(gmat[i][nq]);
+		}
+
+
+		int nmc_new = 0;
+		for (int ns = 0; ns < nmc; ns++)
+		{
+			// Only if g is not NaN
+			if (!std::isnan(gvec[ns])) {
+				nmc_new++;
+			}
+		}
+
+		double V = calVar(gvec);
+		int Kos = Ko;
+
+		const int endm = comb.size(); // (nx+ng)-1
+		const int endx = endm - 1;			// (nx)-1
+		if (endm == 0)
+		{
+			if (Opt == 'T')
+			{
+				Si.push_back(1.); // total
+			}
+			else
+			{
+				Si.push_back(0.);   // main
+			}
+			if (performPCA){
+			  printf("    GSA nq=%i, Si=%.2f, K=%i \n", nq + 1, Si[nq], Kos);
+			} else { 
+			  printf("    GSA PCA %i, Si=%.2f, K=%i \n", nq + 1, Si[nq], Kos);
+			}
+			continue;
+		}
+		else if (endm == nrv)
+		{
+			if (Opt == 'T')
+			{
+				Si.push_back(0.); // total
+			}
+			else
+			{
+				Si.push_back(1.);   // main
+			}
+			if (performPCA) {
+				printf("    GSA nq=%i, Si=%.2f, K=%i \n", nq + 1, Si[nq], Kos);
+			}
+			else {
+				printf("    GSA PCA %i, Si=%.2f, K=%i \n", nq + 1, Si[nq], Kos);
+			}
+			continue;
+		}
+
+		mat data(endm + 1, nmc_new);
+
+		int count_valid = 0;
+		for (int ns = 0; ns < nmc; ns++)
+		{
+			// Only if g is not NaN
+			if (!std::isnan(gvec[ns])) {
+				data(endm, count_valid) = gvec[ns];
+				count_valid++;
+			}
+		}
+
+		for (int ne = 0; ne < endm; ne++)
+		{
+			int idx = comb[ne];
+
+			if (idx > nrv - 1) {
+				std::string errMsg = "Error running UQ engine: combination index exceeds the bound";
+				theErrorFile.write(errMsg);
+			}
+			count_valid = 0;
+			for (int ns = 0; ns < nmc; ns++)
+			{
+				// Only if g is not NaN
+				if (!std::isnan(gvec[ns])) {
+					data(ne, count_valid) = xval[ns][idx];
+					count_valid++;
+				}
+			}
+		}
+
+		gmm_full model;
+		//bool status = model.learn(data, Kos, maha_dist, static_subset, 30, 100, V *1.e-3, false);
+		double oldLogL = -INFINITY, logL;
+		bool status;
+
+		int Kthres;
+		if (Opt == 'T')
+		{
+			Kthres = nmc_new / 100; // total
+		}
+		else
+		{
+			Kthres = nmc_new / 10;   // main
+		}
+
+		while (1) {
+			status = model.learn(data, Kos, maha_dist, static_subset, 500, 500, V * 1.e-15, false);// max kmeans iter = 100, max EM iter = 200, convergence variance = V*1.e-15
+			logL = model.sum_log_p(data);
+			if ((logL < oldLogL) || (Kos >= Kthres)) {
+				break;
+			}
+			else {
+				oldLogL = logL;
+				Kos = Kos + 1;
+				//printf("increasing Ko to %i, ll=%.f3\n", Kos, logL);
+			}
+		}
+
+		if (!performPCA) {
+			printf("    GSA nq=%i, K=%i \n", nq + 1, Kos);
+		}
+		else {
+			printf("    GSA PCA %i, K=%i \n", nq + 1, Kos);
+		}
+
+		if (status == false)
+		{
+			std::string errMsg = "Error running UQ engine: GSA learning failed";
+			theErrorFile.write(errMsg);
+		}
+
+		if (Kos == 0)
+		{
+			std::string errMsg = "Error running UQ engine: GSA learning failed. Try with more number of samples.";
+			theErrorFile.write(errMsg);
+		}
+
+		mat mu = model.means;   //nrv x Ko
+		cube cov = model.fcovs; //nrv x nrv x Ko
+		rowvec pi = model.hefts;   //1 x Ko 
+		rowvec mug = mu.row(endm);    //1 x Ko
+
+		vector<double> mui;
+		mui.reserve(nmc_new);
+		// Used to calculate conditional mean and covariance
+		cube SiginvSig(1, endm, Kos);
+		mat muk(endm, Kos);
+		for (int k = 0; k < Kos; k++)
+		{
+			mat Sig12 = cov.subcube(0, endm, k, endx, endm, k);
+			mat Sig11 = cov.subcube(0, 0, k, endx, endx, k);
+			muk.col(k) = mu.submat(0, k, endx, k);
+			SiginvSig.slice(k) = solve(Sig11, Sig12).t();
+		}
+
+		//model.means.print("means:");
+		//model.fcovs.print("fcovs:");
+
+		for (int i = 0; i < nmc_new; i++)
+		{
+			rowvec pik_tmp(Kos, fill::zeros);
+			colvec muki(Kos);
+			mat xi = data.submat(0, i, endx, i);
+
+			for (int k = 0; k < Kos; k++)
+			{
+				mat tmp = SiginvSig.slice(k);
+				mat muval = muk.col(k);
+				muki.subvec(k, k) = mug(k) + SiginvSig.slice(k) * (xi - muval);
+				pik_tmp(k) = pi(k) * mvnPdf(xi, muval, cov.subcube(0, 0, k, endx, endx, k));
+
+			}
+
+			rowvec piki = pik_tmp / sum(pik_tmp);
+			mat tmp = piki * muki;
+			mui.push_back(tmp(0, 0));
+		}
+
+		double var1 = 0, var2 = 0;
+		for (int k = 0; k < Kos; k++)
+		{
+			mat Sig22 = cov.subcube(endm, endm, k, endm, endm, k);
+			var1 = var1 + pi(k) * Sig22(0, 0) + pi(k) * mug(k) * mug(k);
+			var2 = var2 + pi(k) * mug(k);
+		}
+		double V_approx = var1 - var2 * var2;
+
+		if (!performPCA) {
+			Si_tmp.push_back(calVar(mui)/ V_approx);
+			varQoI.push_back(V_approx);
+		}
+		else {
+			Ei.push_back(mui);
+		}
+		
+	}
+
+	if (performPCA) {
+		mat Sigmaij(nqoi_red, nqoi_red);
+		for (int nq1 = 0; nq1 < nqoi_red; nq1++) {
+			for (int nq2 = 0; nq2 < nqoi_red; nq2++) {
+				if (nq1 >= nq2) {
+					Sigmaij(nq1, nq2) = calCov(Ei[nq1], Ei[nq2]);
+					Sigmaij(nq2, nq1) = Sigmaij(nq1, nq2);
+				}
+			}
+		}
+
+
+		for (int nq = 0; nq < nqoi_eff; nq++) {
+			rowvec aa = princ_dir_red.row(nq);
+			double Vi = (aa * Sigmaij * trans(aa)).eval()(0, 0);
+			double V = sum(aa % trans(lambs_red) % aa);
+			Si_tmp.push_back(Vi / V);
+			varQoI.push_back(V);
+		}
+
+	}
+
+	//Si.push_back(Vi / V);
+	if (Opt == 'T')
+	{
+		std::for_each(Si_tmp.begin(), Si_tmp.end(), [](double& S) { S = 1.0 - S; });
+	}
+	Si= Si_tmp;   
+
+
+	for (int nq = 0; nq < nqoi_eff; nq++) {
+		//printf("GSA nq=%i, Si=%.2f, %c \n", nq + 1, Si[nq], Opt);
+		if (isinf(Si[nq]) || isnan(Si[nq]))
+		{
+			Si[nq] = -100;
+		}
+	}
+
+}
+
+
+
+void runGSA::runSingleGSA(vector<double> gvec,int Ko,char Opt, vector<double>& Si, vector<vector<double>>& Ei)
 {
     //
-    // we will ignore NaN in gval
+    // we will ignore NaN in gvec
     //
 
     int nmc_new = 0;
     for (int ns = 0; ns < nmc; ns++)
     {
         // Only if g is not NaN
-        if (!std::isnan(gval[ns])) {
+        if (!std::isnan(gvec[ns])) {
             nmc_new++;
         }
     }
@@ -234,9 +661,9 @@ vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
 		combs = combs_tmp;
 	}
 
-	double V = calVar(gval);
+	double V = calVar(gvec);
 	double Vi;
-	vector<double> Si;
+	//vector<double> Si;
 	Si.reserve(ncombs);
 
 	for (int nc = 0; nc < ncombs; nc++)
@@ -279,12 +706,11 @@ vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
         for (int ns = 0; ns < nmc; ns++)
         {
             // Only if g is not NaN
-            if (!std::isnan(gval[ns])) {
-                data(endm, count_valid) = gval[ns];
+            if (!std::isnan(gvec[ns])) {
+                data(endm, count_valid) = gvec[ns];
                 count_valid++;
             }
         }
-        std::cout<<count_valid<<endl;
 
 		for (int ne = 0; ne < endm; ne++)
 		{
@@ -298,12 +724,11 @@ vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
 			for (int ns = 0; ns < nmc; ns++)
 			{
                 // Only if g is not NaN
-                if (!std::isnan(gval[ns])) {
+                if (!std::isnan(gvec[ns])) {
                     data(ne, count_valid) = xval[ns][idx];
                     count_valid++;
                 }
 			}
-            std::cout<<count_valid<<endl;
         }
 
 		gmm_full model;
@@ -415,13 +840,103 @@ vector<double> runGSA::doGSA(vector<double> gval,int Ko,char Opt)
 
 		if (isinf(Si[nc]) || isnan(Si[nc]))
 		{
-			return { -100 };
+			Si[nc] = -100;
+		}
+
+		Ei.push_back(mui);
+	}
+}
+
+void runGSA::runPCA(vector<vector<double>> gmat, vector<vector<double>>& gmat_red, mat& princ_dir_red) {
+
+	std::cout << "running PCA ..." << std::endl;
+
+    mat U_matrix;
+    vec svec;
+    mat V_matrix;
+
+	
+    //mat gmat_matrix = conv_to<mat>::from(gmat);
+
+    int n = gmat.size();
+    int p = gmat[0].size();
+
+    mat gmat_matrix(n, p);
+
+    for (int nr = 0; nr < n; nr++)
+    {
+        for (int nc = 0; nc < p; nc++)
+        {
+            gmat_matrix(nr, nc) = gmat[nr][nc];
+        }
+    }
+	
+	//
+	// run SVD
+	//
+
+	auto readStart = std::chrono::high_resolution_clock::now();
+	svd_econ(U_matrix,svec,V_matrix,gmat_matrix);
+	auto readEnd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - readStart).count() / 1.e3;
+	std::cout << "Elapsed time SVD: " << readEnd << " s\n";
+
+	mat princ_dir, princ_comp;
+	int neigen;
+	if (n>p) {
+		princ_dir = V_matrix;       // projection matrix
+		//princ_comp = U_matrix.cols(0, p - 1) * arma::diagmat(svec); // reduced variables
+		princ_comp = U_matrix;
+		neigen = p;
+	} else {
+		//princ_dir = V_matrix.cols(0, p - 1);       // projection matrix pxp'
+		princ_dir = V_matrix;       // projection matrix pxp'
+		princ_comp = U_matrix * arma::diagmat(svec); // reduced variables nxp'
+		neigen = n;
+	}
+	double sum_var = 0;
+	//double totVar = sum(trace(C));
+	double totVar = sum(svec % svec);
+	for (int i = 0; i < neigen; i++) {
+		sum_var = sum_var + pow(svec[i], 2) / totVar;
+		if (sum_var > PCAvarRatioThres) {
+			npc = i+1;
+			PCAvarRatio = sum_var;
+			break;
 		}
 	}
 
-	return Si;
-}
+	std::cout << "Number of the PC components " << npc << std::endl;
 
+	princ_dir_red = princ_dir.cols(0, npc - 1); // projection matrix
+	mat princ_comp_red = princ_comp.cols(0, npc - 1);           // reduced variables
+
+	for (size_t i = 0; i < princ_comp_red.n_rows; ++i) {
+		gmat_red.push_back(arma::conv_to< vector<double> >::from(princ_comp_red.row(i)));
+	};
+	lambs_red = pow(svec.rows(0, npc - 1), 2) / nmc;
+
+	/*
+	std::cout << "print this first" << std::endl;
+	std::cout << princ_comp_red* trans(princ_dir_red) << std::endl;
+	std::cout << "print this second" << std::endl;
+	std::cout << gmat_matrix << std::endl;
+
+
+	//mat V_matrixe;
+	//vec Lvece;
+	//mat C = gmat_matrix * trans(gmat_matrix);
+	//eig_sym(Lvece, V_matrixe, C, "dc");
+
+	std::cout << ">>eigenvalue analysis" << std::endl;
+	std::cout << "total variance is " << trace(C) << std::endl;
+	std::cout << "normalized lambdas are " << std::endl  << pow(svec, 2) / sum(trace(C)) << std::endl;
+	std::cout << "sum of lambdas " << sum(pow(svec, 2) / sum(trace(C))) << std::endl;
+
+	//std::cout << "singularvalue decomposition" << std::endl;
+	//std::cout << "lambda is " << Lvece << std::endl;
+	//std::cout << "normalized lambda is " << Lvece / sum(trace(C)) << std::endl;
+	*/
+}
 
 double runGSA::mvnPdf(mat x, mat mu, mat cov) 
 {
@@ -458,6 +973,24 @@ double runGSA::calVar(vector<double> x) {
 	return (accum / count);
 }
 
+double runGSA::calCov(vector<double> x1, vector<double> x2) {
+	double m1 = calMean(x1);
+	double m2 = calMean(x2);
+	int N = x1.size();
+	double accum = 0.0;
+	int count = 0;
+	for (int i = 0; i < N; i++) {
+		if (!std::isnan(x1[i]) && !std::isnan(x2[i]))  {
+			accum += (x1[i] - m1) * (x2[i] - m2);
+			count++;
+		}
+	}
+
+	//std::cout << (accum / (x.size())) << std::endl;
+	return (accum / count);
+}
+
+
 void runGSA::writeTabOutputs(jsonInput inp, int procno)
 {
 	if (procno==0) {
@@ -490,7 +1023,7 @@ void runGSA::writeTabOutputs(jsonInput inp, int procno)
 				Taboutfile << std::to_string(xval[i][j]) << "    ";
 			}
 			for (int j = 0; j < inp.nqoi; j++) {
-				Taboutfile << std::to_string(gval[i][j]) << "    ";
+				Taboutfile << std::to_string(gmat[i][j]) << "    ";
 			}
 			Taboutfile << std::endl;
 		}
@@ -512,7 +1045,7 @@ void runGSA::writeOutputs(jsonInput inp, double dur, int procno)
 		}
 
 		outfile.setf(std::ios::fixed, std::ios::floatfield); // set fixed floating format
-		outfile.precision(4); // for fixed format
+		outfile.precision(8); // for fixed format
 
 		outfile << "* number of input combinations" << std::endl;
 		outfile << inp.ngr << std::endl;
@@ -526,9 +1059,12 @@ void runGSA::writeOutputs(jsonInput inp, double dur, int procno)
 		}
 
 		outfile << "* number of outputs" << std::endl;
-		outfile << inp.nqoi << std::endl;
+		outfile << inp.nqoi + inp.nqoiVects << std::endl;
 
 		outfile << "* output names" << std::endl;
+		for (int nu = 0; nu < inp.nqoiVects; nu++) {
+			outfile << "[aggregated]" << inp.qoiVectNames[nu] << std::endl;
+		}
 		for (int i = 0; i < inp.nqoi; i++) {
 			outfile << inp.qoiNames[i] << std::endl;
 		}
@@ -551,14 +1087,24 @@ void runGSA::writeOutputs(jsonInput inp, double dur, int procno)
 			outfile << inp.rvNames[inp.groups[j][inp.groups[j].size() - 1]] << ") ";
 		}
 		outfile << std::endl;
+		
+		for (int i = 0; i < inp.nqoiVects; i++) {
+			for (int j = 0; j < inp.ngr; j++) {
+				outfile << Simatagg[j][i] << " ";
+			}
+			for (int j = 0; j < inp.ngr; j++) {
+				outfile << Stmatagg[j][i] << " ";
+			}
+			outfile << std::endl;
+		}
 
 		for (int i = 0; i < inp.nqoi; i++) {
 
 			for (int j = 0; j < inp.ngr; j++) {
-				outfile << Simat[i][j] << " ";
+				outfile << Simat[j][i] << " ";
 			}
 			for (int j = 0; j < inp.ngr; j++) {
-				outfile << Stmat[i][j] << " ";
+				outfile << Stmat[j][i] << " ";
 			}
 			outfile << std::endl;
 		}
@@ -568,6 +1114,22 @@ void runGSA::writeOutputs(jsonInput inp, double dur, int procno)
 
 		outfile << "* elapsed time:" << std::endl;
 		outfile << dur << " s" << std::endl;
+
+		if (performPCA) {
+			outfile << "* PCA" << std::endl;
+			outfile << "yes" << std::endl;
+
+			outfile << "* number of PCA components" << std::endl;
+			outfile << npc << std::endl;
+
+			outfile << "* proportion of variance explained by PCA" << std::endl;
+			outfile << PCAvarRatio << std::endl;
+
+		}
+		else {
+			outfile << "* PCA" << std::endl;
+			outfile << "no" << std::endl;
+		}
 
 		outfile.close();
 

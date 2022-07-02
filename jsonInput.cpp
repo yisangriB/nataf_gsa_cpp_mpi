@@ -81,6 +81,8 @@ jsonInput::jsonInput(string workDir, string inpFile, int procno)
 	nmc = UQjson["UQ_Method"]["samplingMethodData"]["samples"];
 	rseed = UQjson["UQ_Method"]["samplingMethodData"]["seed"];
 	UQmethod = UQjson["UQ_Method"]["samplingMethodData"]["method"];
+
+
 	//
 	// Specify parameters in each distributions.
 	//
@@ -369,20 +371,26 @@ jsonInput::jsonInput(string workDir, string inpFile, int procno)
 	// get edp names
 	//
 
-	nqoi = 0;
+	
+	int count_qoi = 0;
 	for (auto& elem : UQjson["EDP"]) {
 		// *name of distribution
 		if (elem["length"] == 1) {
 			qoiNames.push_back(elem["name"]);
-			nqoi++;
+			count_qoi++;
 		} else if (elem["length"] > 1) {
+			qoiVectNames.push_back(elem["name"]); // to combine Sobol indices later
+			qoiVectRange.push_back({ count_qoi, count_qoi + int(elem["length"]) });
 			std::string name = elem["name"];
 			for (int j=0; j < elem["length"]; j++) {
 				qoiNames.push_back(name + "_" + std::to_string(j+1));
-				nqoi++;
+				count_qoi++;
 			}
 		}
 	}
+	nqoi = count_qoi;
+
+	nqoiVects = qoiVectNames.size();
 
 	//
 	// get correlation matrix
@@ -472,6 +480,43 @@ jsonInput::jsonInput(string workDir, string inpFile, int procno)
 		resamplingSize.push_back(length_data);
 	}
 
+	//
+	// Perform PCA?
+	//
+
+	// default
+	if (nqoi > 15) {
+		performPCA = true;
+	}
+	else {
+		performPCA = false;
+	}
+
+	if (UQjson["UQ_Method"].find("performPCA") != UQjson["UQ_Method"].end()) {
+
+		std::string PCAoption = UQjson["UQ_Method"]["performPCA"];
+		if ((PCAoption.compare("Yes") == 0)) {
+			performPCA = true;
+		}
+		else if ((PCAoption.compare("No") == 0)) {
+			performPCA = false;
+		}
+	}
+
+	if (performPCA) {
+		PCAvarRatioThres = UQjson["UQ_Method"]["PCAvarianceRatio"];
+		if (PCAvarRatioThres <= 0) {
+			std::string errMsg = "Error reading input: PCA variance ratio should be greater than zero.";
+			theErrorFile.write(errMsg);
+		}
+		else if (PCAvarRatioThres > 1.0) {
+			std::string errMsg = "Error reading input: PCA variance ratio should not be greater than one.";
+			theErrorFile.write(errMsg);
+		}
+	}
+	else {
+		PCAvarRatioThres = 0.0;
+	}
 }
 
 void
