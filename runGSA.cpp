@@ -76,23 +76,31 @@ runGSA::runGSA(vector<vector<double>> xval,
 	vector<vector<double>> gmat_eff = gmat;
     vector<vector<double>> gmat_red;
 
+
 	//
 	// Preprocess gmat find a constant column
 	//
 
-	preprocess_gmat(gmat, gmat_eff);
+	preprocess_gmat(gmat, gmat_eff); // Zero mean, get constants idx
 
 	//
 	// PCA process
 	//
 	//mat princ_dir_red;
     if (performPCA) {
+		std::cout << "Running PCA ..." << std::endl;
         runPCA(gmat_eff, gmat_red, princ_dir_red);
+		std::cout << "PCA done..." << std::endl;
     } else {
         //copy
         //for (int i = 0; i < gmat_eff.size(); i++) {
         //    gmat_red.push_back(gmat_eff[i]);
         //}
+		std::cout << "Processing without PCA ..." << std::endl;
+
+		for (int nq = constantQoiIdx.size() - 1; nq >= 0; nq--) {
+			for (auto& row : gmat_eff) row.erase(next(row.begin(), nq));
+		}
 		gmat_red = gmat_eff;
 		princ_dir_red.eye(nqoi, nqoi);
     }
@@ -122,6 +130,7 @@ runGSA::runGSA(vector<vector<double>> xval,
 					denom += varQoI[nq];
 				}
 				if (denom == 0) denom = 1.0; // for numerical stability. Si is anyways zero
+				if (numerSi > numerSt) numerSt = numerSt;
 				Siagg_tmp.push_back(numerSi / denom);
 				Stagg_tmp.push_back(numerSt / denom);
 			}
@@ -134,36 +143,118 @@ runGSA::runGSA(vector<vector<double>> xval,
 void runGSA::preprocess_gmat(vector<vector<double>> gmat, vector<vector<double>>& gmat_eff)
 {
 	// Make the matrix centered...
-	int count = 0;
-	for (int nq = nqoi-1; nq >= 0; nq--) {
-		vector<double> gvec;
-		gvec.reserve(nmc);
-		for (int i = 0; i < nmc; i++) {
-			gvec.push_back(gmat[i][nq]);
-		}
 
-		double mean = 0;
-		double sqDiff = 0;
 
-		for (int i = 0; i < nmc; i++)
-			mean += gvec[i];
 
-		mean = mean / double(nmc);
-		for (int i = 0; i < nmc; i++)
-			sqDiff += (gmat[i][nq] - mean) * (gmat[i][nq] - mean);
+	std::cout << "Preprocessing function for QoIs.." << std::endl;
 
-		//double var = sqDiff / nmc;
-		if (sqDiff < 1.e-10) {
-			constantQoiIdx.push_back(nq);
-			// remove the column 
-			for (auto& row : gmat_eff) row.erase(next(row.begin(), nq));
+	std::vector<double> avg(nqoi, 0.0);
+	std::vector<double> var(nqoi, 0.0);
+	for (auto& row : gmat_eff)
+	{
+		std::transform(avg.begin(), avg.end(), row.begin(), avg.begin(), std::plus<double>()); // sum
+		std::transform(var.begin(), var.end(), row.begin(), var.begin(), [](double i, double j) {return i + j*j; }); // square sum
+	}
+	const double scale(1/(double)nmc);
+	std::transform(avg.begin(), avg.end(), avg.begin() ,[scale](double element) { return element *= scale; }); // avg of value
+	std::transform(var.begin(), var.end(), var.begin(), [scale](double element) { return element *= scale; }); // avg of squared value
+	std::transform(var.begin(), var.end(), avg.begin(), var.begin(), [](double i, double j) {return i - j * j; });// avg of square - square of avg
+
+	for (auto& row : gmat_eff)
+	{
+		// zero mean
+		std::transform(row.begin(), row.end(), avg.begin(), row.begin(), std::minus<double>());
+	}
+
+	std::cout << "  - QoI now has zero mean  " << std::endl;
+	std::cout << "  - Checking if QoI is constant  " << std::endl;
+
+	/*
+	while ((it = std::find_if(it, var.end(), [](double x) {return abs(x)<1.e-15; })) != var.end())
+	{
+		constantQoiIdx.push_back(std::distance(var.begin(), it));
+		std::cout << std::distance(var.begin(), it) << "\n";
+		it++;
+	}
+
+	while ((it = std::find_if(it, var.end(), [](double x) {return abs(x) >= 1.e-15; })) != var.end())
+	{
+		nonConstantQoiIdx.push_back(std::distance(var.begin(), it));
+		std::cout << std::distance(var.begin(), it) << "\n";
+		it++;
+	}
+	*/
+
+	int i = 0;
+	for (auto it = var.begin(); it != var.end(); it++) {
+		if (abs(*it) < 1.e-15) {
+			constantQoiIdx.push_back(i);
 		}
 		else {
-			for (auto& row : gmat_eff) row[nq] = row[nq]- mean;
+			nonConstantQoiIdx.push_back(i);
+		}
+		i++;
+	} 
+	std::cout << "   - Number of constant QoIs:  " << constantQoiIdx.size() << std::endl;
+	std::cout << "   - Number of nonconstant QoIs:  " << nonConstantQoiIdx.size() << std::endl;
+
+/*
+	int count = 0;
+	for (int nq = nqoi-1; nq >= 0; nq--) {
+		bool isConstant = true;
+		
+		
+		std::cout << gmat_eff[0][nq] << " " << gmat_eff[1][nq] << std::endl;
+		int testcount = 0;
+		for (int i = 0; i < nmc-1; i++)
+		{ 
+			testcount += 1;
+			if (gmat_eff[i][nq] != gmat_eff[i + (int)1][nq]) {
+				isConstant = false;
+				break;
+			}
+			
+
+		}
+		
+		//std::cout << isConstant << std::endl;
+
+		if (isConstant) {
+			std::cout << "IS CONSTANT" << std::endl;
+			constantQoiIdx.push_back(nq);
+			for (auto& row : gmat_eff) row.erase(next(row.begin(), nq));
 			count++;
 		}
+*/
+		/*
+		if (gmat[1][nq] == gmat[0][nq]) {
+
+			for (int i = 0; i < nmc; i++)
+				mean += gmat[i][nq];
+
+			mean = mean / double(nmc);
+			for (int i = 0; i < nmc; i++)
+				sqDiff += (gmat[i][nq] - mean) * (gmat[i][nq] - mean);
+
+			//double var = sqDiff / nmc;
+			if (sqDiff < 1.e-10) {
+				constantQoiIdx.push_back(nq);
+				// remove the column 
+				for (auto& row : gmat_eff) row.erase(next(row.begin(), nq));
+			}
+			else {
+				for (auto& row : gmat_eff) row[nq] = row[nq]- mean;
+				count++;
+			}
+
+		}
+		
+		if (nq % 10000 == 0) {
+			std::cout << "  - Current row is " << nq << " among " << nqoi << std::endl;
+		}
 	}
-	nqoi_eff = count;
+	*/
+	nqoi_eff = nqoi- constantQoiIdx.size();
 
 }
 
@@ -852,8 +943,6 @@ void runGSA::runSingleGSA(vector<double> gvec,int Ko,char Opt, vector<double>& S
 
 void runGSA::runPCA(vector<vector<double>> gmat, vector<vector<double>>& gmat_red, mat& princ_dir_red) {
 
-	std::cout << "running PCA ..." << std::endl;
-
     mat U_matrix;
     vec svec;
     mat V_matrix;
@@ -862,16 +951,25 @@ void runGSA::runPCA(vector<vector<double>> gmat, vector<vector<double>>& gmat_re
     //mat gmat_matrix = conv_to<mat>::from(gmat);
 
     int n = gmat.size();
-    int p = gmat[0].size();
+    //int p = gmat[0].size();
+	int p = nqoi_eff;
 
     mat gmat_matrix(n, p);
 
+	//arma::vec idx(constantQoiIdx);
+	arma::uvec idx(nonConstantQoiIdx.size());
+	for (int nqe = 0; nqe < nonConstantQoiIdx.size(); nqe++) {
+		idx(nqe) = nonConstantQoiIdx[nqe];
+	}
+
     for (int nr = 0; nr < n; nr++)
     {
-        for (int nc = 0; nc < p; nc++)
-        {
-            gmat_matrix(nr, nc) = gmat[nr][nc];
-        }
+		arma::vec r(gmat[nr]);
+		gmat_matrix.row(nr) = r.elem(idx).t();
+        //for (int nc = 0; nc < p; nc++)
+        //{
+        //    gmat_matrix(nr, nc) = gmat[nr][nc];
+        //}
     }
 	
 	//

@@ -112,7 +112,7 @@ private:
 	int nmc;
 	mat princ_dir_red;
 	vec lambs_red;
-	vector<double>constantQoiIdx;
+	vector<double>constantQoiIdx, nonConstantQoiIdx;
 	vector<double>varQoI;
 	//PCA variables
 	bool performPCA;

@@ -112,7 +112,7 @@ int main(int argc, char** argv)
 	//std::string osType = "Windows";
 	//std::string runType = "runningLocal";
 
-	std::string  errorDir = workDir + "/dakota.err";
+	std::string  errorDir = workDir + "/dakota.err" ;
 	theErrorFile.getFileName(errorDir, procno);
 
 	//auto elapseStart = std::chrono::high_resolution_clock::now();
@@ -133,15 +133,17 @@ int main(int argc, char** argv)
 
 	//
 	//	(3-1) Random number generator Gaussian(mean=0,var=1) - (batch samples)
+	//	(4-1) FE Analysis - (parallel)
 	//
 
 	T.sample(inp, procno);
+	T.simulateAppBatch(workflowDriver, osType, runType, inp, procno, nprocs);
 
 	//
-	//	(4-1) FE Analysis - (parallel)
 	//	
 	
-	T.simulateAppBatch(workflowDriver, osType, runType, inp, procno, nprocs);
+	//T.readDataset("C:/Users/SimCenter/Dropbox/SimCenterPC/GSAPCA/X.txt", "C:/Users/SimCenter/Dropbox/SimCenterPC/GSAPCA/Y.txt", inp.nrv, inp.nqoi, "csv", inp.nmc);
+
 
 	//std::cout<<"Just testing this location 1\n";
 
@@ -156,22 +158,25 @@ int main(int argc, char** argv)
 		//	(5-1) Global sensitivity analysis - (parallel)
 		//
 
+
+		std::cout << "Writing Tab.out" << std::endl;
 		runForward ForwardResults(T.X, T.G, procno);
 		ForwardResults.writeTabOutputs(inp, procno); 	//	Write dakotaTab.out
 
+		std::cout << "Running sensitivity analysis" << std::endl;
 		runGSA GsaResults(T.X, T.G, inp.groups, inp.PCAvarRatioThres, inp.qoiVectRange, 1, procno, nprocs); // int Kos = 25;
-
-		//elapsedTime = (std::chrono::high_resolution_clock::now() - elapseStart).count();
 		elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - elapseStart).count()/1.e3;
 		GsaResults.writeOutputs(inp, elapsedTime, procno); //	Write dakota.out
 	}
 	else if (!inp.uqType.compare("Forward Propagation")) {
+
+		std::cout << "Running Forward Propagation" << std::endl;
+
 		//
 		//	(5-2) Forward analysis
 		//
 		runForward ForwardResults(T.X, T.G, procno);
 		ForwardResults.writeTabOutputs(inp, procno); 	//	Write dakotaTab.out
-		// = (std::chrono::high_resolution_clock::now() - elapseStart).count();
 		elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - elapseStart).count() /1.e3;
 		ForwardResults.writeOutputs(inp, procno);		//	Write dakota.out <- curretly not being used anywhere
 	}

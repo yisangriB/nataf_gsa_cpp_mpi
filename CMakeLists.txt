@@ -27,6 +27,11 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+# sy - optimization flags
+if(MSVC)
+    add_compile_options("/W4" "$<$<CONFIG:RELEASE>:/O2>")
+endif()
+
 # sy - to check if filesystem is working
 
 if(LINUX)

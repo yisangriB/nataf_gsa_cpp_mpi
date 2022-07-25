@@ -55,7 +55,7 @@ runForward::runForward(vector<vector<double>> xval,	vector<vector<double>> gmat,
 		nmc = xval.size();
 		nrv = xval[0].size();
 
-		std::cout << "RV     Mean    StdDev  Skewness  Kurtosis" << std::endl;
+		std::cout << "RV     Mean    StdDev  Skewness  Kurtosis\n";
 		for (int nr = 0; nr < nrv; nr++) {
 			vector<double> xvec;
 			for (int ns = 0; ns < nmc; ns++) {
@@ -67,13 +67,17 @@ runForward::runForward(vector<vector<double>> xval,	vector<vector<double>> gmat,
 			double skewness_val = calSkewness(xvec, mean_val, stdDev_val);
 			double kurtosis_val = calKurtosis(xvec, mean_val, stdDev_val);
 
-			std::cout << "RV " << nr << ": ";
-			std::cout << mean_val << " " << stdDev_val << " " << skewness_val << " " << kurtosis_val << std::endl;
+			std::cout << "RV " << nr+1 << ": ";
+			std::cout << mean_val << " " << stdDev_val << " " << skewness_val << " " << kurtosis_val << '\n';
 
 			mean.push_back(mean_val);
 			stdDev.push_back(stdDev_val);
 			skewness.push_back(skewness_val);
 			kurtosis.push_back(kurtosis_val);
+			if (nr > 100) {
+				std::cout << "RVs from " << nr +2 << " to " << nrv+1 << " not displayed here for memory efficiency" << '\n';
+				break;
+			}
 		}	
 	}
 }
@@ -140,38 +144,70 @@ void runForward::writeOutputs(jsonInput inp, int procno)
 void runForward::writeTabOutputs(jsonInput inp, int procno)
 {
 	if (procno==0) {
+		auto dispInterv = 1.e7; 
+		int dispCount = 1;
+		auto readStart = std::chrono::high_resolution_clock::now();
+		auto readEnd = 0;
 		// dakotaTab.out
 		std::string writingloc1 = inp.workDir + "/dakotaTab.out";
-		std::ofstream Taboutfile(writingloc1);
+		std::stringstream Taboutfile;
+		//std::ofstream Taboutfile(writingloc1);
 
-		if (!Taboutfile.is_open()) {
+		//if (!Taboutfile.is_open()) {
+
+		//	std::string errMsg = "Error running UQ engine: Unable to write dakota.out";
+		//	theErrorFile.write(errMsg);
+		//}
+
+		Taboutfile.setf(std::ios::fixed, std::ios::floatfield); // set fixed floating format
+		Taboutfile.precision(7); // for fixed format
+
+		Taboutfile << "idx\t";
+		for (int j = 0; j < inp.nrv + inp.nco + inp.nre; j++) {
+			Taboutfile << inp.rvNames[j] << "\t";
+		}
+		for (int j = 0; j < inp.nqoi; j++) {
+			Taboutfile << inp.qoiNames[j] << "\t";
+		}
+		Taboutfile << '\n';
+
+
+		for (int i = 0; i < inp.nmc; i++) {
+			Taboutfile << std::to_string(i + 1) << "\t";
+			for (int j = 0; j < inp.nrv + inp.nco + inp.nre; j++) {
+				Taboutfile << std::to_string(xval[i][j]) << "\t";
+			}
+			for (int j = 0; j < inp.nqoi; j++) {
+				Taboutfile << std::to_string(gval[i][j]) << "\t";
+			}
+			Taboutfile << '\n';
+
+			if (i*inp.nqoi > dispInterv*dispCount) {
+				std::cout << "  - Writing Tab file in progress: " << (double)i/(double)inp.nmc*100 << "% \n";
+				dispCount += 1;
+
+				if (dispCount == 1) {
+					readEnd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - readStart).count() / 1.e3;
+					double expWriteTime = readEnd * (double)inp.nmc / (double)10;
+					if (expWriteTime > 5.0) {
+						// Only if the file is large, print the expected reading time
+						std::cout << "  - Expected writing time: " << expWriteTime << " s\n";
+					}
+				}
+			}
+		}
+		//Taboutfile.close();
+		std::ofstream Taboutfile1(writingloc1);
+
+		if (!Taboutfile1.is_open()) {
 
 			std::string errMsg = "Error running UQ engine: Unable to write dakota.out";
 			theErrorFile.write(errMsg);
 		}
+		Taboutfile1 << Taboutfile.str();
+		Taboutfile1.close();
 
-		Taboutfile.setf(std::ios::fixed, std::ios::floatfield); // set fixed floating format
-		Taboutfile.precision(10); // for fixed format
-
-		Taboutfile << "idx         ";
-		for (int j = 0; j < inp.nrv + inp.nco + inp.nre; j++) {
-			Taboutfile << inp.rvNames[j] << "           ";
-		}
-		for (int j = 0; j < inp.nqoi; j++) {
-			Taboutfile << inp.qoiNames[j] << "            ";
-		}
-		Taboutfile << std::endl;
-
-
-		for (int i = 0; i < inp.nmc; i++) {
-			Taboutfile << std::to_string(i + 1) << "    ";
-			for (int j = 0; j < inp.nrv + inp.nco + inp.nre; j++) {
-				Taboutfile << std::to_string(xval[i][j]) << "    ";
-			}
-			for (int j = 0; j < inp.nqoi; j++) {
-				Taboutfile << std::to_string(gval[i][j]) << "    ";
-			}
-			Taboutfile << std::endl;
-		}
+		readEnd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - readStart).count() / 1.e3;
+		std::cout << "Elapsed time to write Tab.json: " << readEnd << " s\n";
 	}
 }

@@ -475,11 +475,6 @@ double ERANataf::normCdf(double x)
 	return 0.5 * (1.0 + sign * y);
 }
 
-//void ERANataf::simulateAppBatch(string osType,
-//								string runType,
-//								jsonInput inp,
-//								int procno,
-//								int nproc)
 
 void ERANataf::simulateAppBatch(string workflowDriver,
 								string osType,
@@ -705,7 +700,7 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 	//if ((osType.compare("Windows") == 0) && (runType.compare("runningLocal") == 0))
 	//	workflowDriver = "workflow_driver.bat >nul 2>nul";
 
-	string workflowDriver_string = "cd " + workDir + " && " + workDir + "/" + workflowDriver;
+	string workflowDriver_string = "cd \"" + workDir + "\" && \"" + workDir + "/" + workflowDriver + "\"" ;
 
 	const char* workflowDriver_char = workflowDriver_string.c_str();
 	system(workflowDriver_char);
@@ -764,6 +759,16 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 
 		if (j == 0) {
 			std::string errMsg = "Error running FEM: results.out file at workdir." + std::to_string(i + 1) + " is empty.";
+			//theErrorFile.write(errMsg);
+			// check of ops.out is created
+			string messageFromFEM = workDir + "/ops.out";
+			std::ifstream femFile(messageFromFEM.data());
+			if (femFile.is_open()) {
+				std::string msg((std::istreambuf_iterator<char>(femFile)),
+					std::istreambuf_iterator<char>());
+				errMsg += "\n *** Message from the FEM engine in workdir." + std::to_string(i + 1) + " says \n \"";
+				errMsg += msg + "\"";
+			}
 			theErrorFile.write(errMsg);
 		}
 		if (j != nqoi) {
@@ -775,6 +780,174 @@ vector<double> ERANataf::simulateAppOnce(int i, string workingDirs, string copyD
 
 	return g_tmp;
 	//return {0.,0,};
+}
+
+void ERANataf::readBin(string filename,int ndim, vector<vector<double>> &mat, int& nsamp)
+{
+	// filename="C:/Users/SimCenter/Dropbox/SimCenterPC/GSAPCA/Y.bin"
+	auto readStart = std::chrono::high_resolution_clock::now();
+
+	std::cout << "Storing the binary file in a vector...\n";
+	std::ifstream fin(filename, std::ios::binary);
+	if (!fin)
+	{
+		std::string errMsg = "Error reading data: could not find " + filename;
+		theErrorFile.write(errMsg);
+	}
+	// Determine the file length
+	fin.seekg(0, std::ios::end);
+	const size_t num_elements = fin.tellg() / sizeof(float);
+	fin.seekg(0, std::ios::beg);
+	// Create a vector to store the data
+	std::vector<float> data(num_elements);
+	// Load the data
+	fin.read(reinterpret_cast<char*>(&data[0]), num_elements * sizeof(float));
+
+	auto readEnd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - readStart).count() / 1.e3;
+	std::cout << "Elapsed time: " << readEnd << " s\n";
+
+	if (num_elements % ndim != 0) {
+		std::string errMsg = "Error reading " + filename + " : datasize inconsistency. Total number of entries is " + std::to_string(num_elements) + " and the dimension is " + std::to_string(ndim) + "which means the number of samples is not an integer";
+		theErrorFile.write(errMsg);
+	}
+	else {
+		nsamp = num_elements / ndim;
+	}
+
+	//for (int i = 0; i < n; i++) {
+	//	for (int j = 0; j < p; j++) {
+	//		gmat_matrix(i, j) = double(data[i * p + j]);
+	//	}
+	//}
+	std::cout << "Reshaping the vector...\n";
+	mat.reserve(nsamp);
+	for (int i = 0; i < nsamp; i++) {
+		vector<double> mattmp;
+		mattmp.reserve(ndim);
+		for (int j = 0; j < ndim; j++) {
+			mattmp.push_back((double)data[i * ndim + j]);
+		}
+		mat.push_back(mattmp);
+	}
+	data.clear();
+	data.shrink_to_fit();
+
+	readEnd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - readStart).count() / 1.e3;
+	std::cout << "Elapsed reading time: " << readEnd << " s\n";
+}
+
+void ERANataf::readCSV(string filename, int ndim, vector<vector<double>>& mat, int& nsamp)
+{
+	auto readStart = std::chrono::high_resolution_clock::now();
+	double readEnd;
+	std::cout << "Start reading " << filename << " ... \n";
+
+
+	
+	//std::string filename = "C:/Users/SimCenter/Dropbox/SimCenterPC/GSAPCA/Y.txt";
+	std::ifstream csv(filename);
+	const std::string delimiter = ",";
+	const std::string delimiter2 = " ";
+	int i = 0;
+
+	bool fileIsCsv = false;
+	//int tenSecInterv = 10;
+	for (std::string line; std::getline(csv, line); ) {
+
+		vector<double> mattmp;
+		mattmp.reserve(ndim);
+
+		// split string by delimeter
+		auto start = 0U;
+		auto end = line.find(delimiter);
+		int j = 0;
+
+		// if comma seperated
+		while (end != std::string::npos) {
+			fileIsCsv = true;
+			mattmp.push_back(std::stod(line.substr(start, end - start)));
+			start = end + delimiter.length();
+			end = line.find(delimiter, start);
+			j++;
+		}
+
+		// if tab seperated
+		if (j == 0) {
+			auto end = line.find(delimiter2);
+			while (end != std::string::npos) {
+				fileIsCsv = true;
+				mattmp.push_back(std::stod(line.substr(start, end - start)));
+				start = end + delimiter2.length();
+				end = line.find(delimiter2, start);
+				j++;
+			}
+		}
+
+		mattmp.push_back(std::stod(line.substr(start, end - start)));
+		mat.push_back(mattmp);
+		if (i == 50) {
+			readEnd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - readStart).count() / 1.e3;
+			double expReadTime = readEnd * (double)nsamp / (double)50;
+			if (expReadTime > 5.0) {
+				// Only if the file is large, print the expected reading time
+				std::cout << "  - Expected reading time: " << expReadTime << " s\n";
+			}
+		}
+
+		i++;
+	}
+
+	nsamp = i;
+
+	
+	//arma::mat gmat_matrix = arma::zeros<arma::mat>(n, p);
+
+	//for (std::string line; std::getline(csv, line); ) {
+
+		// split string by delimeter
+	//	auto start = 0U;
+	//	auto end = line.find(delimeter);
+	//	int j = 0;
+	//	while (end != std::string::npos) {
+	//
+	//		gmat_matrix(i, j) = std::stod(line.substr(start, end - start));
+	//		start = end + delimeter.length();
+	//		end = line.find(delimeter, start);
+	//		j++;
+	//	}
+	//	gmat_matrix(i, j) = std::stod(line.substr(start, end - start));
+	//	i++;
+	//}
+	
+	readEnd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - readStart).count() / 1.e3;
+	std::cout << "  - Elapsed reading time: " << readEnd << " s\n";
+}
+
+
+void ERANataf::readDataset(string inpFilePath, string outFilePath, int xdim, int ydim, string option, int& nmc)
+{
+	int nsampx=0;
+
+	if (option.compare("binary") == 0)
+	{
+		readBin(inpFilePath, xdim, X, nsampx);
+		int nsampy = nsampx;
+		readBin(outFilePath, ydim, G, nsampy);
+		if (nsampx != nsampy) {
+			std::string errMsg = "Error reading data: datasize inconsistency between RVs and QoIs.";
+			theErrorFile.write(errMsg);
+		}
+	}
+	else if (option.compare("csv") == 0) {
+		readCSV(inpFilePath, xdim, X, nsampx);
+		int nsampy = nsampx;
+		readCSV(outFilePath, ydim, G, nsampy);
+		if (nsampx != nsampy) {
+			std::string errMsg = "Error reading data: sample size inconsistency between RVs(" + std::to_string(nsampx) +") and QoIs(" + std::to_string(nsampy) + ")";
+			theErrorFile.write(errMsg);
+		}
+	}
+	nmc = nsampx;
 }
 
 
@@ -918,6 +1091,7 @@ void ERANataf::simulateAppSequential(string osType, string runType, jsonInput in
 */
 
 void ERANataf::sample(jsonInput inp, int procno) {
+
 
 	int nmc = inp.nmc;
 	int nreg = inp.nreg;

@@ -118,8 +118,17 @@ ERADist::ERADist(string getName, string getOpt, vector<double> getVal, vector<do
 
 		printf("Mean: %3.2f, Std: %3.2f \n", theDist->getMean(), theDist->getStd());
 		printf("Params: ");
+		int countPars = 0;
 		for (auto par : theDist->getParam())
+		{
 			printf("%3.2f, ", par);
+			countPars++;
+			if (countPars > 10) {
+				printf(" .... ");
+				break;		
+			}
+		}
+
 		printf("\n");
 		printf("PDF at mean : %3.2f\n\n", theDist->getPdf(theDist->getMean()));
 	}

@@ -67,6 +67,18 @@ jsonInput::jsonInput(string workDir, string inpFile, int procno)
 	//json UQjson = json::parse(myfile);
 
 	uqType = UQjson["UQ_Method"]["uqType"];
+	std::string uqEngine = UQjson["UQ_Method"]["uqEngine"];
+
+	if ((uqEngine.compare("SimCenterUQ")==0)) {
+		// pass
+	}
+	else
+	{
+		//*ERROR*
+		std::string errMsg = "Error reading json: this is SimCenterUQ(forward) backend, but the user requested " + uqEngine;
+		theErrorFile.write(errMsg);
+	}
+
 
 	if ((uqType.compare("Forward Propagation") == 0) || (uqType.compare("Sensitivity Analysis") == 0)) {
 		// pass
@@ -158,7 +170,7 @@ jsonInput::jsonInput(string workDir, string inpFile, int procno)
 				else {
 					InputType = "Moments";
 				}
-				std::string errMsg = "Error reading input: RVs specified in UQ tab should have the option <Dataset-Discrete>. Your input is <" + InputType + "-" + distName + ">";
+				std::string errMsg = "Error reading input: RVs specified in UQ tab should have the option Dataset-discrete. Your input is " + InputType + "-" + distName + "";
 				theErrorFile.write(errMsg);
 			}
 			resampIdx.push_back(count);
@@ -266,7 +278,7 @@ jsonInput::jsonInput(string workDir, string inpFile, int procno)
 					}
 					else
 					{
-						std::string errMsg = "Error reading json: cannot find <" + pn + "> in " + distName + " from input json.";
+						std::string errMsg = "Error reading json: cannot find " + pn + " in " + distName + " from input json.";
 						theErrorFile.write(errMsg);
 					}
 
@@ -504,14 +516,19 @@ jsonInput::jsonInput(string workDir, string inpFile, int procno)
 	}
 
 	if (performPCA && (uqType.compare("Sensitivity Analysis") == 0)) {
-		PCAvarRatioThres = UQjson["UQ_Method"]["PCAvarianceRatio"];
-		if (PCAvarRatioThres <= 0) {
-			std::string errMsg = "Error reading input: PCA variance ratio should be greater than zero.";
-			theErrorFile.write(errMsg);
+		if (UQjson["UQ_Method"].find("PCAvarianceRatio") != UQjson["UQ_Method"].end()) {
+			PCAvarRatioThres = UQjson["UQ_Method"]["PCAvarianceRatio"];
+			if (PCAvarRatioThres <= 0) {
+				std::string errMsg = "Error reading input: PCA variance ratio should be greater than zero.";
+				theErrorFile.write(errMsg);
+			}
+			else if (PCAvarRatioThres > 1.0) {
+				std::string errMsg = "Error reading input: PCA variance ratio should not be greater than one.";
+				theErrorFile.write(errMsg);
+			}
 		}
-		else if (PCAvarRatioThres > 1.0) {
-			std::string errMsg = "Error reading input: PCA variance ratio should not be greater than one.";
-			theErrorFile.write(errMsg);
+		else {
+			PCAvarRatioThres = 0.0;
 		}
 	}
 	else {
@@ -549,7 +566,7 @@ jsonInput::fromTextToId(string groupTxt, vector<string>& groupPool, vector<vecto
 			}
 			else {
 				// *ERROR*
-				std::string errMsg = "Error reading json: element <" + substr + "> inside the variable groups not found.";
+				std::string errMsg = "Error reading json: element " + substr + " inside the variable groups not found.";
 				theErrorFile.write(errMsg);
 
 			}

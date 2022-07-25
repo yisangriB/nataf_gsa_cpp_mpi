@@ -25,3 +25,7 @@ cmake-build-debug
 nataf_gsa
 nlopt/
 nlohmann/
+cmake-build-debug
+cmake-build-debug-visual-studio
+cmake-build-release-visual-studio
+build2
